@@ -100,11 +100,17 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--magenta)}
     <div class="row3" style="margin-top:10px">
       <div>
         <label class="lbl" for="surgeHW">Windstau zum HW (m)</label>
-        <input id="surgeHW" inputmode="decimal" placeholder="0,0">
+        <div style="display:flex;gap:6px">
+          <input id="surgeHW" inputmode="decimal" placeholder="0,0" style="flex:1">
+          <button type="button" class="btn" id="signHW" aria-label="Vorzeichen Windstau HW wechseln" style="min-width:46px;font-size:17px">±</button>
+        </div>
       </div>
       <div>
         <label class="lbl" for="surgeNW">Windstau zum NW (m)</label>
-        <input id="surgeNW" inputmode="decimal" placeholder="0,0">
+        <div style="display:flex;gap:6px">
+          <input id="surgeNW" inputmode="decimal" placeholder="0,0" style="flex:1">
+          <button type="button" class="btn" id="signNW" aria-label="Vorzeichen Windstau NW wechseln" style="min-width:46px;font-size:17px">±</button>
+        </div>
       </div>
     </div>
     <p class="hint" style="margin:8px 0 0">Getrennte Korrektur je Scheitel aus der BSH-Windstauvorhersage: + bei auflandigem Wind (höher), − bei ablandigem (niedriger). Zwischen HW und NW wird stufenlos überblendet.</p>
@@ -177,11 +183,52 @@ HW 03:58 1,1
 
   <div id="result"></div>
 
-  <p class="foot">Kosinus-Näherung zwischen den Scheiteln – im Wattenmeer kann die reale Kurve abweichen
-  (Asymmetrie, Windstau/Abwind). Höhen werden so übernommen, wie sie eingefügt werden, ohne Umrechnung des
-  Bezugsniveaus – auf Werte über SKN achten. Werte stets mit der amtlichen BSH-Gezeitentafel und aktuellen
-  Wasserstandsvorhersagen prüfen. Keine Gewähr, ersetzt nicht die eigene Navigation.
-  <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.5</span></p>
+  <section class="card">
+    <details>
+      <summary>Hilfe &amp; Anleitung</summary>
+      <div style="margin-top:10px;font-size:14px;line-height:1.55">
+        <p style="margin:0 0 10px"><strong>Was die App macht:</strong> Sie ermittelt, in welchem Zeitraum eine flache Stelle
+        (Wattenhoch, Barre, Priel) für dein Schiff tief genug ist, und zeigt den Wasserstand im Tagesverlauf.</p>
+
+        <p style="margin:0 0 4px"><strong>Schritt für Schritt:</strong></p>
+        <ol style="margin:0 0 10px;padding-left:20px">
+          <li style="margin-bottom:5px"><strong>Pegel &amp; Datum</strong> oben wählen.</li>
+          <li style="margin-bottom:5px"><strong>BSH-Gezeiten</strong> aufklappen, die Monatstafel des Pegels (z.&nbsp;B. von gezeiten.bsh.de) einfügen und „Monatsdaten speichern". Danach lädt jeder gewählte Tag automatisch seine Hoch-/Niedrigwasser.</li>
+          <li style="margin-bottom:5px"><strong>Windstau</strong> getrennt für HW und NW aus der BSH-Vorhersage eintragen (über den ±-Knopf auch negativ für ablandigen Wind).</li>
+          <li style="margin-bottom:5px"><strong>Flache Stelle</strong> festlegen: trockenfallend (Höhe über SKN), Tiefe unter SKN oder Tiefe bei MThw – je nachdem, wie deine Quelle es angibt.</li>
+          <li style="margin-bottom:5px"><strong>Schiff</strong>: Tiefgang und gewünschte Sicherheitsmarge unter dem Kiel.</li>
+        </ol>
+
+        <p style="margin:0 0 4px"><strong>Ergebnis lesen:</strong></p>
+        <ul style="margin:0 0 10px;padding-left:20px">
+          <li style="margin-bottom:5px">Das <strong>magentafarbene Band</strong> nennt das befahrbare Zeitfenster mit Dauer.</li>
+          <li style="margin-bottom:5px">In der <strong>Tidekurve</strong> ist die gestrichelte Linie „Tiefgang + Marge" die nötige Wasserhöhe; oberhalb davon ist die Stelle passierbar.</li>
+          <li style="margin-bottom:5px">Die <strong>Halbstundentabelle</strong> zeigt Tidenhöhe, Wassertiefe an der Stelle und das Wasser unter dem Kiel; befahrbare Zeilen sind hervorgehoben.</li>
+        </ul>
+
+        <p style="margin:0 0 10px"><strong>Speicherung:</strong> Alle Eingaben und die Monatsdaten bleiben lokal auf deinem Gerät erhalten – auch offline. Es werden keine Daten übertragen.</p>
+
+        <p style="margin:0"><strong>Wichtig zur Genauigkeit:</strong> Zwischen den Scheiteln wird mit einer Kosinus-Näherung gerechnet; MThw/MTnw sind Mittelwerte. Im Wattenmeer kann die reale Kurve abweichen. Ergebnisse immer mit amtlichen Unterlagen abgleichen.</p>
+      </div>
+    </details>
+  </section>
+
+  <div class="foot">
+    <p style="margin:0 0 8px"><strong>Wichtiger Hinweis:</strong> Diese Anwendung ist ein unverbindliches, privat und unentgeltlich erstelltes Hilfsmittel zur groben Törnplanung und <strong>keine amtliche Quelle für die Navigation</strong>.</p>
+    <details>
+      <summary style="font-size:13px">Haftungsausschluss &amp; rechtliche Hinweise</summary>
+      <div style="margin-top:8px;font-size:12.5px;line-height:1.5">
+        <p style="margin:0 0 8px"><strong>Keine Gewähr.</strong> Die Anwendung wird ohne jede Gewähr und „wie besehen" bereitgestellt. Sie berechnet Tidenfenster mit vereinfachten Näherungsverfahren (Kosinus-Interpolation zwischen den Gezeitenscheiteln) auf Grundlage manuell eingegebener oder eingefügter Daten sowie hinterlegter Mittelwerte (z.&nbsp;B. MThw, MTnw). Alle Ergebnisse sind unverbindliche Schätzwerte.</p>
+        <p style="margin:0 0 8px"><strong>Abweichungen.</strong> Tatsächliche Wasserstände und Eintrittszeiten können – etwa durch Wind, Luftdruck, Oberwasser, Seegang, lokale Gegebenheiten, veraltete oder fehlerhafte Eingaben – erheblich von den angezeigten Werten abweichen.</p>
+        <p style="margin:0 0 8px"><strong>Keine amtliche Quelle.</strong> Die App ersetzt nicht amtliche Seekarten, die Gezeiten-, Wasserstands- und Sturmflutvorhersagen sowie Gezeitentafeln des BSH, aktuelle Wetter- und Warnmeldungen, nautische Veröffentlichungen und die eigene, sorgfältige Navigation. Maßgeblich sind ausschließlich die amtlichen Unterlagen.</p>
+        <p style="margin:0 0 8px"><strong>Eigenverantwortung.</strong> Die Nutzung erfolgt ausschließlich auf eigene Gefahr und in eigener Verantwortung. Für die Sicherheit von Schiff, Besatzung und Dritten ist allein die Schiffsführerin oder der Schiffsführer verantwortlich. Jede Eingabe und jedes Ergebnis ist eigenständig anhand amtlicher Quellen zu überprüfen.</p>
+        <p style="margin:0 0 8px"><strong>Haftung.</strong> Eine Haftung des Erstellers sowie etwaiger weitergebender Personen für Schäden aus der Nutzung oder Nichtnutzbarkeit der Anwendung oder aus fehlerhaften, unvollständigen oder veralteten Berechnungen, Daten oder Funktionen ist – soweit gesetzlich zulässig – ausgeschlossen. Zwingende gesetzliche Haftung bleibt unberührt, insbesondere bei Vorsatz und grober Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit.</p>
+        <p style="margin:0 0 8px"><strong>Weitergabe.</strong> Eine Weitergabe der Anwendung an Dritte ist nicht gestattet.</p>
+        <p style="margin:0"><strong>Keine Zusicherung.</strong> Es wird keine Gewähr für Verfügbarkeit, Fehlerfreiheit, Aktualität oder Eignung für einen bestimmten Zweck übernommen.</p>
+      </div>
+    </details>
+    <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.7</span>
+  </div>
 </main>
 
 <script>
@@ -538,6 +585,12 @@ function update(persist=true){renderResult();if(persist)save();}
   $("margin").oninput=e=>{state.margin=e.target.value;update();};
   $("surgeHW").oninput=e=>{state.surgeHW=e.target.value;update();};
   $("surgeNW").oninput=e=>{state.surgeNW=e.target.value;update();};
+  const flipSign=key=>{
+    let v=num(state[key]);if(isNaN(v))v=0;v=-v;if(Object.is(v,-0))v=0;
+    state[key]=String(v);$(key).value=String(v).replace(".",",");update();
+  };
+  $("signHW").onclick=()=>flipSign("surgeHW");
+  $("signNW").onclick=()=>flipSign("surgeNW");
   document.querySelectorAll("#modeseg button").forEach(b=>{
     b.onclick=()=>{state.mode=b.dataset.mode;renderModeSeg();update();};
   });
