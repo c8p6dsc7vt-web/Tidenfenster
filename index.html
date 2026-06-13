@@ -117,6 +117,16 @@ svg{width:100%;height:auto;display:block}
   <section class="card">
     <h2>Gezeiten-Scheitel (BSH-Gezeitentafel)</h2>
     <p class="hint">Scheitel des Bezugsorts aus der BSH-Tafel übernehmen – Zeiten in deutscher Ortszeit, Höhen über SKN.</p>
+    <details id="pastebox" style="margin-bottom:12px">
+      <summary style="cursor:pointer;font-weight:600;font-size:13.5px;color:var(--magenta)">BSH-Daten einfügen</summary>
+      <p class="hint" style="margin-top:8px">Zeilen aus der BSH-Gezeitentafel hier einfügen – je Zeile ein Scheitel, z.B. <span style="font-family:var(--mono)">HW&nbsp;10:45&nbsp;4,3</span> oder <span style="font-family:var(--mono)">NW&nbsp;04:30</span>. Höhe darf fehlen.</p>
+      <textarea id="pasteta" rows="5" style="width:100%;font-family:var(--mono);font-size:14px;padding:9px;border:1.5px solid var(--grid);border-radius:4px;resize:vertical"
+        placeholder="HW 10:45 4,3&#10;NW 17:00 0,6&#10;HW 23:10 4,1"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button type="button" class="btn primary" id="parsebtn">Übernehmen</button>
+        <span id="parsemsg" style="font-size:12.5px;align-self:center"></span>
+      </div>
+    </details>
     <div id="rows"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button type="button" class="btn" id="addrow">+ Scheitel hinzufügen</button>
@@ -129,7 +139,7 @@ svg{width:100%;height:auto;display:block}
   <p class="foot">Kosinus-Näherung zwischen den Scheiteln – im Wattenmeer kann die reale Kurve abweichen
   (Asymmetrie, Windstau/Abwind). Werte stets mit der amtlichen BSH-Gezeitentafel und aktuellen
   Wasserstandsvorhersagen prüfen. Keine Gewähr, ersetzt nicht die eigene Navigation.
-  <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.0</span></p>
+  <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.1</span></p>
 </main>
 
 <script>
@@ -369,6 +379,68 @@ function update(persist=true){renderResult();if(persist)save();}
     const g=PEGEL.find(p=>p.name===state.pegel);
     state.rows=state.rows.map(r=>({...r,height:String(r.type==="HW"?g.mhw:g.mnw)}));
     renderRows();update();
+  };
+
+  // BSH-Daten aus eingefügtem Text parsen
+  function parsePaste(txt){
+    const out=[];
+    const lines=txt.split(/[\n\r]+/);
+    for(const line of lines){
+      const raw=line.trim();
+      if(!raw)continue;
+      // Typ erkennen: HW/Hochwasser/H  bzw.  NW/Niedrigwasser/N
+      let type=null;
+      if(/\b(hw|hochwasser)\b/i.test(raw)||/^h\b/i.test(raw))type="HW";
+      else if(/\b(nw|niedrigwasser)\b/i.test(raw)||/^n\b/i.test(raw))type="NW";
+      // Uhrzeit HH:MM oder HH.MM
+      const tm=raw.match(/(\d{1,2})[:.](\d{2})/);
+      if(!tm)continue;
+      const hh=Math.min(23,parseInt(tm[1],10)),mm=Math.min(59,parseInt(tm[2],10));
+      const time=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
+      // Höhe: erste Dezimalzahl NACH der Uhrzeit (mit , oder .) – sonst leer
+      const after=raw.slice(tm.index+tm[0].length);
+      const hm=after.match(/(-?\d+[.,]\d+)/);
+      let height="";
+      if(hm)height=hm[1].replace(",",".");
+      out.push({type,time,height});
+    }
+    // Typen ergänzen, falls nicht angegeben: aus Höhe ableiten oder alternierend
+    const withH=out.filter(o=>o.height!=="");
+    for(let i=0;i<out.length;i++){
+      if(out[i].type)continue;
+      if(out[i].height!==""){
+        // hoch, wenn über Median der Höhen
+        const vals=withH.map(o=>parseFloat(o.height)).sort((a,b)=>a-b);
+        const med=vals.length?vals[Math.floor(vals.length/2)]:0;
+        out[i].type=parseFloat(out[i].height)>=med?"HW":"NW";
+      }else if(i>0&&out[i-1].type){
+        out[i].type=out[i-1].type==="HW"?"NW":"HW";
+      }else{
+        out[i].type="HW";
+      }
+    }
+    return out;
+  }
+
+  $("parsebtn").onclick=()=>{
+    const msg=$("parsemsg");
+    const parsed=parsePaste($("pasteta").value);
+    if(parsed.length<2){
+      msg.style.color="var(--danger)";
+      msg.textContent="Zu wenige Scheitel erkannt – bitte je Zeile HW/NW mit Uhrzeit.";
+      return;
+    }
+    const g=PEGEL.find(p=>p.name===state.pegel);
+    let filled=0;
+    state.rows=parsed.map(p=>{
+      let h=p.height;
+      if(h===""){h=String(p.type==="HW"?g.mhw:g.mnw);filled++;}
+      return {type:p.type,time:p.time,height:h};
+    });
+    renderRows();update();
+    msg.style.color="var(--ink)";
+    msg.textContent=parsed.length+" Scheitel übernommen"+(filled?" ("+filled+"× Höhe aus Mittelwert)":"")+".";
+    $("pastebox").open=false;
   };
 
   if("serviceWorker"in navigator){
