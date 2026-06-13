@@ -16,7 +16,7 @@
 :root{
   --paper:#F2F4F0; --ink:#1C2B33; --blue1:#BFDCEA; --curve:#2E6E8E;
   --watt:#A9C79C; --wattdark:#5E7D52; --sand:#D9CFA8;
-  --magenta:#C2188C; --grid:#C7D2D8; --danger:#B3261E; --muted:#5A6B73;
+  --magenta:#C2188C; --grid:#C7D2D8; --danger:#B3261E; --muted:#5A6B73; --okgreen:#2E7D46;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --cond:"Avenir Next Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;
 }
@@ -34,9 +34,10 @@ main{max-width:860px;margin:0 auto;padding:16px 14px 0}
 .card{background:#fff;border:1.5px solid var(--grid);border-radius:6px;padding:14px;margin-top:14px}
 .card h2{font-family:var(--cond);font-size:19px;margin:0 0 10px;font-weight:700}
 label.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px}
-input,select{font-family:var(--mono);font-size:16px;padding:8px 9px;border:1.5px solid var(--grid);
+input,select,textarea{font-family:var(--mono);font-size:16px;padding:8px 9px;border:1.5px solid var(--grid);
   border-radius:4px;background:#fff;color:var(--ink);width:100%;}
-input:focus,select:focus{outline:2px solid var(--magenta);outline-offset:1px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--magenta);outline-offset:1px}
+textarea{resize:vertical;line-height:1.4}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:14px}
 .row3{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
 .seg{display:flex;gap:6px;margin-bottom:10px}
@@ -47,6 +48,13 @@ input:focus,select:focus{outline:2px solid var(--magenta);outline-offset:1px}
   border:1.5px solid var(--grid);background:#fff;color:var(--ink)}
 .btn.primary{border-color:var(--magenta);background:var(--magenta);color:#fff}
 .hint{font-size:13px;color:var(--muted);margin:0 0 10px}
+.status{font-size:12.5px;font-family:var(--mono);margin:8px 0 0;padding:7px 9px;border-radius:4px}
+.status.ok{background:rgba(46,125,70,.10);color:var(--okgreen);border:1px solid rgba(46,125,70,.35)}
+.status.warn{background:rgba(194,24,140,.07);color:var(--ink);border:1px solid rgba(194,24,140,.3)}
+.status.err{background:#FBEDEC;color:var(--danger);border:1px solid var(--danger)}
+.daychip{display:inline-block;font-family:var(--mono);font-size:12px;margin:8px 0 0;padding:4px 8px;border-radius:4px;font-weight:600}
+.daychip.has{background:rgba(46,125,70,.12);color:var(--okgreen)}
+.daychip.no{background:rgba(179,38,30,.10);color:var(--danger)}
 .scheitel-row{display:grid;grid-template-columns:74px 1fr 1fr 40px;gap:8px;margin-bottom:8px;align-items:center}
 .scheitel-row .del{padding:8px 0;color:var(--danger);font-weight:700}
 .banner{margin-top:14px;padding:14px 16px;border-radius:6px;border:2px solid var(--magenta);background:#fff}
@@ -67,6 +75,7 @@ svg{width:100%;height:auto;display:block}
 .reqinfo{font-family:var(--mono);font-size:12.5px;margin:12px 0 0;color:var(--muted)}
 .reqinfo strong{color:var(--ink)}
 .update-note{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;margin-top:8px}
+summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--magenta)}
 </style>
 </head>
 <body>
@@ -88,6 +97,35 @@ svg{width:100%;height:auto;display:block}
         <input type="date" id="datum">
       </div>
     </div>
+    <div id="daychip"></div>
+  </section>
+
+  <section class="card">
+    <h2>BSH-Gezeiten eingeben</h2>
+    <details id="tidebox">
+      <summary>Gezeiten für den ganzen Monat einfügen</summary>
+      <p class="hint" style="margin-top:10px">
+        Die Monatstafel des gewählten Pegels (gezeiten.bsh.de) hier einfügen – mit Datum je Tag.
+        Die App ordnet die Hoch-/Niedrigwasser den Tagen zu; über die Datumswahl oben rufst du
+        dann jeden Tag ab. Erkannt werden u.&nbsp;a. Zeilen wie
+        <span style="font-family:var(--mono);white-space:nowrap">11.07. HW 03:12 1,1</span> oder
+        Tabellenzeilen mit mehreren Zeiten pro Tag.
+      </p>
+      <textarea id="tidata" rows="7" placeholder="11.07.2026
+HW 03:12 1,1
+NW 09:30 -0,2
+HW 15:40 1,2
+NW 21:55 -0,3
+
+12.07.2026
+HW 03:58 1,1
+..."></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button type="button" class="btn primary" id="savetides">Monatsdaten speichern</button>
+        <button type="button" class="btn" id="cleartides">Alle Daten dieses Pegels löschen</button>
+      </div>
+      <div id="storestatus"></div>
+    </details>
   </section>
 
   <div class="grid2">
@@ -115,18 +153,8 @@ svg{width:100%;height:auto;display:block}
   </div>
 
   <section class="card">
-    <h2>Gezeiten-Scheitel (BSH-Gezeitentafel)</h2>
-    <p class="hint">Scheitel des Bezugsorts aus der BSH-Tafel übernehmen – Zeiten in deutscher Ortszeit, Höhen über SKN.</p>
-    <details id="pastebox" style="margin-bottom:12px">
-      <summary style="cursor:pointer;font-weight:600;font-size:13.5px;color:var(--magenta)">BSH-Daten einfügen</summary>
-      <p class="hint" style="margin-top:8px">Zeilen aus der BSH-Gezeitentafel hier einfügen – je Zeile ein Scheitel, z.B. <span style="font-family:var(--mono)">HW&nbsp;10:45&nbsp;4,3</span> oder <span style="font-family:var(--mono)">NW&nbsp;04:30</span>. Höhe darf fehlen.</p>
-      <textarea id="pasteta" rows="5" style="width:100%;font-family:var(--mono);font-size:14px;padding:9px;border:1.5px solid var(--grid);border-radius:4px;resize:vertical"
-        placeholder="HW 10:45 4,3&#10;NW 17:00 0,6&#10;HW 23:10 4,1"></textarea>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <button type="button" class="btn primary" id="parsebtn">Übernehmen</button>
-        <span id="parsemsg" style="font-size:12.5px;align-self:center"></span>
-      </div>
-    </details>
+    <h2>Gezeiten-Scheitel des gewählten Tages</h2>
+    <p class="hint">Automatisch aus den gespeicherten Monatsdaten geladen – jederzeit überschreibbar. Höhen über SKN.</p>
     <div id="rows"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button type="button" class="btn" id="addrow">+ Scheitel hinzufügen</button>
@@ -137,9 +165,10 @@ svg{width:100%;height:auto;display:block}
   <div id="result"></div>
 
   <p class="foot">Kosinus-Näherung zwischen den Scheiteln – im Wattenmeer kann die reale Kurve abweichen
-  (Asymmetrie, Windstau/Abwind). Werte stets mit der amtlichen BSH-Gezeitentafel und aktuellen
+  (Asymmetrie, Windstau/Abwind). Höhen werden so übernommen, wie sie eingefügt werden, ohne Umrechnung des
+  Bezugsniveaus – auf Werte über SKN achten. Werte stets mit der amtlichen BSH-Gezeitentafel und aktuellen
   Wasserstandsvorhersagen prüfen. Keine Gewähr, ersetzt nicht die eigene Navigation.
-  <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.1</span></p>
+  <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.2</span></p>
 </main>
 
 <script>
@@ -172,11 +201,20 @@ let state={
   draft:"1.25", margin:"0.5",
   rows:[{type:"NW",time:"04:30",height:"0.6"},{type:"HW",time:"10:45",height:"4.3"},{type:"NW",time:"17:00",height:"0.6"}],
 };
-try{
-  const saved=JSON.parse(localStorage.getItem("tidenfenster-state"));
-  if(saved&&saved.rows&&saved.rows.length>=2) state={...state,...saved};
-}catch(e){}
+// Gespeicherte Monatsdaten: { pegelName: { "YYYY-MM-DD":[{type,time,height},...] } }
+let tides={};
+// Rohtext je Pegel (damit das Textfeld erhalten bleibt)
+let tidesRaw={};
+
+try{const s=JSON.parse(localStorage.getItem("tidenfenster-state"));if(s&&s.rows&&s.rows.length>=2)state={...state,...s};}catch(e){}
+try{const t=JSON.parse(localStorage.getItem("tidenfenster-tides"));if(t&&typeof t==="object")tides=t;}catch(e){}
+try{const r=JSON.parse(localStorage.getItem("tidenfenster-tidesraw"));if(r&&typeof r==="object")tidesRaw=r;}catch(e){}
+
 const save=()=>{try{localStorage.setItem("tidenfenster-state",JSON.stringify(state));}catch(e){}};
+const saveTides=()=>{try{
+  localStorage.setItem("tidenfenster-tides",JSON.stringify(tides));
+  localStorage.setItem("tidenfenster-tidesraw",JSON.stringify(tidesRaw));
+}catch(e){}};
 
 // ---------- Hilfsfunktionen ----------
 const toMin=s=>{if(!s)return null;const[a,b]=s.split(":").map(Number);
@@ -197,6 +235,7 @@ const fmtT=min=>{
 const fmtDur=min=>{const h=Math.floor(min/60),m=Math.round(min%60);
   return h>0?h+" h "+pad(m)+" min":m+" min";};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dmy=key=>{const[y,m,d]=key.split("-");return d+"."+m+"."+y;};
 
 const tideAt=(t,ext)=>{
   if(t<=ext[0].t)return ext[0].h;
@@ -208,6 +247,66 @@ const tideAt=(t,ext)=>{
   }
   return ext[ext.length-1].h;
 };
+
+// Fehlende HW/NW-Typen ergänzen (aus Höhe via Median, sonst alternierend)
+function assignTypes(arr){
+  const withH=arr.filter(o=>o.height!=="");
+  const vals=withH.map(o=>parseFloat(o.height)).sort((a,b)=>a-b);
+  const med=vals.length?vals[Math.floor(vals.length/2)]:0;
+  for(let i=0;i<arr.length;i++){
+    if(arr[i].type)continue;
+    if(arr[i].height!=="")arr[i].type=parseFloat(arr[i].height)>=med?"HW":"NW";
+    else if(i>0&&arr[i-1].type)arr[i].type=arr[i-1].type==="HW"?"NW":"HW";
+    else arr[i].type="HW";
+  }
+}
+
+// ---------- Monatstafel parsen ----------
+function parseMonth(txt,defaultYear){
+  const store={};
+  let curKey=null;
+  for(const line of txt.split(/[\n\r]+/)){
+    if(!line.trim())continue;
+    // Datum DD.MM. oder DD.MM.YYYY (zwei Punkte schützen vor Verwechslung mit Höhen/Zeiten)
+    const dm=line.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})?/);
+    if(dm){
+      const d=+dm[1],mo=+dm[2];
+      const yr=dm[3]?+dm[3]:defaultYear;
+      if(d>=1&&d<=31&&mo>=1&&mo<=12){
+        curKey=yr+"-"+pad(mo)+"-"+pad(d);
+        if(!store[curKey])store[curKey]=[];
+      }
+    }
+    if(!curKey)continue;
+    // Tokens; Zeiten nur mit Doppelpunkt (HH:MM), Höhen mit , oder .
+    const toks=line.split(/[\s;|]+/).filter(Boolean);
+    let cur=null;
+    for(const tk of toks){
+      const tm=tk.match(/^(\d{1,2}):(\d{2})$/);
+      if(tm){
+        if(cur)store[curKey].push(cur);
+        cur={type:null,time:pad(Math.min(23,+tm[1]))+":"+pad(Math.min(59,+tm[2])),height:""};
+        continue;
+      }
+      if(!cur)continue;
+      if(/^(hw|hochwasser|h)$/i.test(tk)){cur.type="HW";continue;}
+      if(/^(nw|niedrigwasser|n)$/i.test(tk)){cur.type="NW";continue;}
+      const hm=tk.match(/^(-?\d+[.,]\d+)$/);
+      if(hm&&cur.height===""){cur.height=hm[1].replace(",",".");continue;}
+    }
+    if(cur)store[curKey].push(cur);
+  }
+  // pro Tag: sortieren, Typen ergänzen, Doppelte (gleiche Zeit) entfernen
+  for(const k in store){
+    let arr=store[k];
+    const seen={};
+    arr=arr.filter(o=>{if(seen[o.time])return false;seen[o.time]=1;return true;});
+    arr.sort((a,b)=>toMin(a.time)-toMin(b.time));
+    assignTypes(arr);
+    store[k]=arr;
+  }
+  return store;
+}
 
 // ---------- Berechnung ----------
 function calc(){
@@ -347,6 +446,38 @@ function renderDrySeg(){
   $("spotlbl").textContent=state.dry?"Watthöhe über SKN (m)":"Kartentiefe unter SKN (m)";
 }
 
+// Gespeicherte-Daten-Status für aktuellen Pegel
+function renderStoreStatus(prefix){
+  const el=$("storestatus");
+  const days=tides[state.pegel]?Object.keys(tides[state.pegel]):[];
+  if(days.length===0){el.innerHTML='<div class="status warn">Noch keine Monatsdaten für diesen Pegel gespeichert.</div>';return;}
+  days.sort();
+  el.innerHTML='<div class="status ok">'+(prefix||"")+days.length+' Tag(e) gespeichert: '+
+    dmy(days[0])+' – '+dmy(days[days.length-1])+'</div>';
+}
+
+// Tageschip an der Datumswahl
+function renderDayChip(){
+  const el=$("daychip");
+  const has=tides[state.pegel]&&tides[state.pegel][state.date];
+  if(has){
+    el.innerHTML='<span class="daychip has">✓ BSH-Daten für diesen Tag geladen</span>';
+  }else{
+    const any=tides[state.pegel]&&Object.keys(tides[state.pegel]).length>0;
+    el.innerHTML='<span class="daychip no">'+(any?"Kein Eintrag für diesen Tag – Scheitel unten manuell":"Keine Monatsdaten – Scheitel unten manuell")+'</span>';
+  }
+}
+
+// Tiden des gewählten Tages aus dem Speicher in die Scheitelliste laden
+function loadDayFromStore(){
+  const day=tides[state.pegel]&&tides[state.pegel][state.date];
+  if(day&&day.length>=2){
+    state.rows=day.map(o=>({type:o.type,time:o.time,height:String(o.height)}));
+    renderRows();
+  }
+  renderDayChip();
+}
+
 function update(persist=true){renderResult();if(persist)save();}
 
 // ---------- Init ----------
@@ -359,10 +490,16 @@ function update(persist=true){renderResult();if(persist)save();}
   $("spotval").value=state.spotVal;
   $("draft").value=state.draft;
   $("margin").value=state.margin;
-  renderDrySeg();renderRows();renderResult();
+  $("tidata").value=tidesRaw[state.pegel]||"";
+  renderDrySeg();renderRows();renderStoreStatus();
+  loadDayFromStore();update();
 
-  sel.onchange=e=>{state.pegel=e.target.value;update();};
-  $("datum").onchange=e=>{state.date=e.target.value;update();};
+  sel.onchange=e=>{
+    state.pegel=e.target.value;
+    $("tidata").value=tidesRaw[state.pegel]||"";
+    renderStoreStatus();loadDayFromStore();update();
+  };
+  $("datum").onchange=e=>{state.date=e.target.value;loadDayFromStore();update();};
   $("spotname").oninput=e=>{state.spotName=e.target.value;update();};
   $("spotval").oninput=e=>{state.spotVal=e.target.value;update();};
   $("draft").oninput=e=>{state.draft=e.target.value;update();};
@@ -381,66 +518,26 @@ function update(persist=true){renderResult();if(persist)save();}
     renderRows();update();
   };
 
-  // BSH-Daten aus eingefügtem Text parsen
-  function parsePaste(txt){
-    const out=[];
-    const lines=txt.split(/[\n\r]+/);
-    for(const line of lines){
-      const raw=line.trim();
-      if(!raw)continue;
-      // Typ erkennen: HW/Hochwasser/H  bzw.  NW/Niedrigwasser/N
-      let type=null;
-      if(/\b(hw|hochwasser)\b/i.test(raw)||/^h\b/i.test(raw))type="HW";
-      else if(/\b(nw|niedrigwasser)\b/i.test(raw)||/^n\b/i.test(raw))type="NW";
-      // Uhrzeit HH:MM oder HH.MM
-      const tm=raw.match(/(\d{1,2})[:.](\d{2})/);
-      if(!tm)continue;
-      const hh=Math.min(23,parseInt(tm[1],10)),mm=Math.min(59,parseInt(tm[2],10));
-      const time=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
-      // Höhe: erste Dezimalzahl NACH der Uhrzeit (mit , oder .) – sonst leer
-      const after=raw.slice(tm.index+tm[0].length);
-      const hm=after.match(/(-?\d+[.,]\d+)/);
-      let height="";
-      if(hm)height=hm[1].replace(",",".");
-      out.push({type,time,height});
-    }
-    // Typen ergänzen, falls nicht angegeben: aus Höhe ableiten oder alternierend
-    const withH=out.filter(o=>o.height!=="");
-    for(let i=0;i<out.length;i++){
-      if(out[i].type)continue;
-      if(out[i].height!==""){
-        // hoch, wenn über Median der Höhen
-        const vals=withH.map(o=>parseFloat(o.height)).sort((a,b)=>a-b);
-        const med=vals.length?vals[Math.floor(vals.length/2)]:0;
-        out[i].type=parseFloat(out[i].height)>=med?"HW":"NW";
-      }else if(i>0&&out[i-1].type){
-        out[i].type=out[i-1].type==="HW"?"NW":"HW";
-      }else{
-        out[i].type="HW";
-      }
-    }
-    return out;
-  }
-
-  $("parsebtn").onclick=()=>{
-    const msg=$("parsemsg");
-    const parsed=parsePaste($("pasteta").value);
-    if(parsed.length<2){
-      msg.style.color="var(--danger)";
-      msg.textContent="Zu wenige Scheitel erkannt – bitte je Zeile HW/NW mit Uhrzeit.";
+  $("savetides").onclick=()=>{
+    const raw=$("tidata").value;
+    const yr=parseInt((state.date||todayISO()).slice(0,4),10);
+    const parsed=parseMonth(raw,yr);
+    const keys=Object.keys(parsed);
+    if(keys.length===0){
+      $("storestatus").innerHTML='<div class="status err">Keine Tage erkannt. Bitte je Tag ein Datum (z.B. 11.07.) und darunter die HW/NW-Zeiten einfügen.</div>';
       return;
     }
-    const g=PEGEL.find(p=>p.name===state.pegel);
-    let filled=0;
-    state.rows=parsed.map(p=>{
-      let h=p.height;
-      if(h===""){h=String(p.type==="HW"?g.mhw:g.mnw);filled++;}
-      return {type:p.type,time:p.time,height:h};
-    });
-    renderRows();update();
-    msg.style.color="var(--ink)";
-    msg.textContent=parsed.length+" Scheitel übernommen"+(filled?" ("+filled+"× Höhe aus Mittelwert)":"")+".";
-    $("pastebox").open=false;
+    tides[state.pegel]=parsed;
+    tidesRaw[state.pegel]=raw;
+    saveTides();
+    loadDayFromStore();update();
+    renderStoreStatus("Gespeichert · ");
+  };
+  $("cleartides").onclick=()=>{
+    if(!confirm("Alle gespeicherten Monatsdaten für "+state.pegel+" löschen?"))return;
+    delete tides[state.pegel];delete tidesRaw[state.pegel];
+    saveTides();$("tidata").value="";
+    renderStoreStatus();renderDayChip();update();
   };
 
   if("serviceWorker"in navigator){
