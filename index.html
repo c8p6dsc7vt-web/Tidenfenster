@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tidenfenster</title>
+<meta name="description" content="Tidenfenster-Rechner für flache Stellen im Wattenmeer – Kosinus-Näherung zwischen den Gezeitenscheiteln der BSH-Tafel.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1C2B33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tidenfenster">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --paper:#F2F4F0; --ink:#1C2B33; --blue1:#BFDCEA; --curve:#2E6E8E;
+  --watt:#A9C79C; --wattdark:#5E7D52; --sand:#D9CFA8;
+  --magenta:#C2188C; --grid:#C7D2D8; --danger:#B3261E; --muted:#5A6B73;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --cond:"Avenir Next Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:max(48px, env(safe-area-inset-bottom));}
+header{border-bottom:3px solid var(--ink);background:#fff;
+  padding:calc(14px + env(safe-area-inset-top)) 20px 12px;}
+.wrap{max-width:860px;margin:0 auto;padding:0 14px}
+header .wrap{padding:0}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--magenta);font-weight:600}
+h1{font-family:var(--cond);font-weight:700;font-size:32px;margin:2px 0 0;letter-spacing:.01em}
+main{max-width:860px;margin:0 auto;padding:16px 14px 0}
+.card{background:#fff;border:1.5px solid var(--grid);border-radius:6px;padding:14px;margin-top:14px}
+.card h2{font-family:var(--cond);font-size:19px;margin:0 0 10px;font-weight:700}
+label.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px}
+input,select{font-family:var(--mono);font-size:16px;padding:8px 9px;border:1.5px solid var(--grid);
+  border-radius:4px;background:#fff;color:var(--ink);width:100%;}
+input:focus,select:focus{outline:2px solid var(--magenta);outline-offset:1px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:14px}
+.row3{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.seg{display:flex;gap:6px;margin-bottom:10px}
+.seg button{flex:1;padding:8px 4px;font-size:12.5px;font-weight:600;border-radius:4px;cursor:pointer;
+  border:1.5px solid var(--grid);background:#fff;color:var(--ink)}
+.seg button.on{border-color:var(--magenta);background:var(--magenta);color:#fff}
+.btn{padding:9px 14px;font-size:13.5px;font-weight:600;border-radius:4px;cursor:pointer;
+  border:1.5px solid var(--grid);background:#fff;color:var(--ink)}
+.btn.primary{border-color:var(--magenta);background:var(--magenta);color:#fff}
+.hint{font-size:13px;color:var(--muted);margin:0 0 10px}
+.scheitel-row{display:grid;grid-template-columns:74px 1fr 1fr 40px;gap:8px;margin-bottom:8px;align-items:center}
+.scheitel-row .del{padding:8px 0;color:var(--danger);font-weight:700}
+.banner{margin-top:14px;padding:14px 16px;border-radius:6px;border:2px solid var(--magenta);background:#fff}
+.banner .lbl{color:var(--magenta);margin-bottom:6px}
+.window{font-family:var(--cond);font-size:27px;font-weight:700;line-height:1.25}
+.window small{font-family:var(--mono);font-size:13.5px;font-weight:500;color:var(--muted)}
+.nowindow{font-family:var(--cond);font-size:23px;font-weight:700;color:var(--danger)}
+.error{margin-top:14px;padding:14px;border-radius:6px;border:1.5px solid var(--danger);background:#FBEDEC;color:var(--danger);font-weight:600}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13px}
+th{text-align:left;padding:6px 8px;border-bottom:2px solid var(--ink);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}
+tr.ok{background:rgba(194,24,140,.06)}
+td.status-ok{color:var(--magenta);font-weight:600}
+td.status-no{color:var(--danger);font-weight:600}
+.foot{font-size:12.5px;color:var(--muted);margin-top:14px;line-height:1.5}
+.tablewrap{overflow-x:auto}
+svg{width:100%;height:auto;display:block}
+.reqinfo{font-family:var(--mono);font-size:12.5px;margin:12px 0 0;color:var(--muted)}
+.reqinfo strong{color:var(--ink)}
+.update-note{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;margin-top:8px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="eyebrow">HÖHEN IN METERN ÜBER SEEKARTENNULL (SKN) · KOSINUS-NÄHERUNG</div>
+  <h1>Tidenfenster</h1>
+</div></header>
+
+<main>
+  <section class="card" style="margin-top:0">
+    <h2>Bezugspegel und Datum</h2>
+    <div class="row3">
+      <div>
+        <label class="lbl" for="pegel">Pegel (deutsche Nordseeküste)</label>
+        <select id="pegel"></select>
+      </div>
+      <div>
+        <label class="lbl" for="datum">Datum</label>
+        <input type="date" id="datum">
+      </div>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <section class="card" style="margin-top:0">
+      <h2>Flache Stelle</h2>
+      <label class="lbl" for="spotname">Bezeichnung</label>
+      <input id="spotname" style="margin-bottom:10px">
+      <label class="lbl">Art der Stelle</label>
+      <div class="seg" id="dryseg">
+        <button type="button" data-dry="1">Trockenfallend</button>
+        <button type="button" data-dry="0">Wassertiefe unter SKN</button>
+      </div>
+      <label class="lbl" id="spotlbl" for="spotval">Watthöhe über SKN (m)</label>
+      <input id="spotval" inputmode="decimal">
+    </section>
+
+    <section class="card" style="margin-top:0">
+      <h2>Schiff</h2>
+      <label class="lbl" for="draft">Tiefgang (m)</label>
+      <input id="draft" inputmode="decimal" style="margin-bottom:10px">
+      <label class="lbl" for="margin">Sicherheitsmarge unter dem Kiel (m)</label>
+      <input id="margin" inputmode="decimal">
+      <p class="reqinfo" id="reqinfo"></p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Gezeiten-Scheitel (BSH-Gezeitentafel)</h2>
+    <p class="hint">Scheitel des Bezugsorts aus der BSH-Tafel übernehmen – Zeiten in deutscher Ortszeit, Höhen über SKN.</p>
+    <div id="rows"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="btn" id="addrow">+ Scheitel hinzufügen</button>
+      <button type="button" class="btn" id="fillmeans">Mittlere Höhen einsetzen</button>
+    </div>
+  </section>
+
+  <div id="result"></div>
+
+  <p class="foot">Kosinus-Näherung zwischen den Scheiteln – im Wattenmeer kann die reale Kurve abweichen
+  (Asymmetrie, Windstau/Abwind). Werte stets mit der amtlichen BSH-Gezeitentafel und aktuellen
+  Wasserstandsvorhersagen prüfen. Keine Gewähr, ersetzt nicht die eigene Navigation.
+  <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.0</span></p>
+</main>
+
+<script>
+"use strict";
+// ---------- Pegel (MHW/MNW über SKN, Näherungswerte als Komfortfunktion) ----------
+const PEGEL=[
+ {name:"Emden, Neue Seeschleuse",mhw:3.5,mnw:0.4},
+ {name:"Borkum, Fischerbalje",mhw:2.8,mnw:0.4},
+ {name:"Norderney, Riffgat",mhw:2.9,mnw:0.4},
+ {name:"Spiekeroog",mhw:3.2,mnw:0.4},
+ {name:"Wangerooge, West",mhw:3.3,mnw:0.4},
+ {name:"Hooksiel, Außenhafen",mhw:4.2,mnw:0.6},
+ {name:"Wilhelmshaven, Alter Vorhafen",mhw:4.3,mnw:0.6},
+ {name:"Bremerhaven, Alter Leuchtturm",mhw:4.2,mnw:0.5},
+ {name:"Helgoland, Binnenhafen",mhw:2.7,mnw:0.4},
+ {name:"Cuxhaven, Steubenhöft",mhw:3.4,mnw:0.4},
+ {name:"Büsum",mhw:3.7,mnw:0.4},
+ {name:"Husum",mhw:3.9,mnw:0.3},
+ {name:"Wittdün, Amrum",mhw:3.0,mnw:0.4},
+ {name:"Dagebüll",mhw:3.3,mnw:0.4},
+ {name:"List auf Sylt",mhw:2.2,mnw:0.4},
+];
+
+// ---------- Zustand ----------
+const todayISO=()=>{const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+let state={
+  pegel:PEGEL[5].name, date:todayISO(),
+  dry:true, spotVal:"0.8", spotName:"Wattenhoch",
+  draft:"1.25", margin:"0.5",
+  rows:[{type:"NW",time:"04:30",height:"0.6"},{type:"HW",time:"10:45",height:"4.3"},{type:"NW",time:"17:00",height:"0.6"}],
+};
+try{
+  const saved=JSON.parse(localStorage.getItem("tidenfenster-state"));
+  if(saved&&saved.rows&&saved.rows.length>=2) state={...state,...saved};
+}catch(e){}
+const save=()=>{try{localStorage.setItem("tidenfenster-state",JSON.stringify(state));}catch(e){}};
+
+// ---------- Hilfsfunktionen ----------
+const toMin=s=>{if(!s)return null;const[a,b]=s.split(":").map(Number);
+  return(isNaN(a)||isNaN(b))?null:a*60+b;};
+const num=s=>parseFloat(String(s).replace(",","."));
+const f2=v=>v.toFixed(2).replace(".",",");
+const pad=n=>String(n).padStart(2,"0");
+const fmtT=min=>{
+  const m=((Math.round(min)%1440)+1440)%1440;
+  const hhmm=pad(Math.floor(m/60))+":"+pad(m%60);
+  const off=Math.floor(Math.round(min)/1440);
+  if(off>=1&&state.date){
+    const d=new Date(state.date+"T00:00:00");d.setDate(d.getDate()+off);
+    return hhmm+" ("+pad(d.getDate())+"."+pad(d.getMonth()+1)+".)";
+  }
+  return hhmm;
+};
+const fmtDur=min=>{const h=Math.floor(min/60),m=Math.round(min%60);
+  return h>0?h+" h "+pad(m)+" min":m+" min";};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const tideAt=(t,ext)=>{
+  if(t<=ext[0].t)return ext[0].h;
+  if(t>=ext[ext.length-1].t)return ext[ext.length-1].h;
+  for(let i=0;i<ext.length-1;i++){
+    const a=ext[i],b=ext[i+1];
+    if(t>=a.t&&t<=b.t){const x=(t-a.t)/(b.t-a.t);
+      return a.h+(b.h-a.h)*(1-Math.cos(Math.PI*x))/2;}
+  }
+  return ext[ext.length-1].h;
+};
+
+// ---------- Berechnung ----------
+function calc(){
+  const d=num(state.draft),mg=num(state.margin),sv=num(state.spotVal);
+  if([d,mg,sv].some(isNaN))return{error:"Bitte alle Zahlenfelder ausfüllen."};
+  const chartDepth=state.dry?-Math.abs(sv):Math.abs(sv);
+  const ext=[];
+  for(const r of state.rows){
+    const t=toMin(r.time),h=num(r.height);
+    if(t===null||isNaN(h))return{error:"Bitte alle Gezeiten-Scheitel (Zeit und Höhe) ausfüllen."};
+    ext.push({t,h,type:r.type});
+  }
+  for(let i=1;i<ext.length;i++){
+    while(ext[i].t<=ext[i-1].t)ext[i].t+=1440;
+    if(ext[i].type===ext[i-1].type)return{error:"Die Scheitel müssen abwechselnd NW und HW sein."};
+  }
+  const reqTide=d+mg-chartDepth;
+  const t0=ext[0].t,t1=ext[ext.length-1].t;
+  const windows=[];let open=null;let prevOk=tideAt(t0,ext)>=reqTide;
+  if(prevOk)open=t0;
+  for(let t=t0+1;t<=t1;t++){
+    const ok=tideAt(t,ext)>=reqTide;
+    if(ok&&!prevOk)open=t;
+    if(!ok&&prevOk&&open!==null){windows.push([open,t-1]);open=null;}
+    prevOk=ok;
+  }
+  if(open!==null)windows.push([open,t1]);
+  const table=[];
+  for(let t=Math.ceil(t0/60)*60;t<=t1;t+=60){
+    const tide=tideAt(t,ext),depth=chartDepth+tide;
+    table.push({t,tide,depth,ok:tide>=reqTide,clearance:depth-d});
+  }
+  return{ext,chartDepth,reqTide,windows,table,t0,t1,draft:d};
+}
+
+// ---------- SVG-Grafik ----------
+function svgChart(c){
+  const W=720,H=300,padL=46,padR=14,padT=18,padB=30;
+  const sillTop=-c.chartDepth;
+  const maxH=Math.max(...c.ext.map(e=>e.h),c.reqTide)+0.4;
+  const minH=Math.min(0,sillTop,...c.ext.map(e=>e.h))-0.4;
+  const X=t=>padL+(t-c.t0)/(c.t1-c.t0)*(W-padL-padR);
+  const Y=h=>padT+(maxH-h)/(maxH-minH)*(H-padT-padB);
+  let path="";const N=300;
+  for(let i=0;i<=N;i++){const t=c.t0+(c.t1-c.t0)*i/N;
+    path+=(i===0?"M":"L")+X(t).toFixed(1)+","+Y(tideAt(t,c.ext)).toFixed(1);}
+  const area=path+"L"+X(c.t1).toFixed(1)+","+Y(minH)+"L"+X(c.t0).toFixed(1)+","+Y(minH)+"Z";
+  const span=c.t1-c.t0,step=span>16*60?180:120;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tidekurve mit befahrbarem Zeitfenster">';
+  s+='<path d="'+area+'" fill="#BFDCEA"/>';
+  s+='<rect x="'+padL+'" y="'+Y(sillTop)+'" width="'+(W-padL-padR)+'" height="'+(Y(minH)-Y(sillTop))+'" fill="'+(c.chartDepth<0?"#A9C79C":"#D9CFA8")+'"/>';
+  s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(sillTop)+'" y2="'+Y(sillTop)+'" stroke="#5E7D52" stroke-width="2"/>';
+  s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(0)+'" y2="'+Y(0)+'" stroke="#1C2B33" stroke-width="1" stroke-dasharray="2 3" opacity="0.5"/>';
+  for(let h=Math.ceil(minH);h<=Math.floor(maxH);h++){
+    s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(h)+'" y2="'+Y(h)+'" stroke="#C7D2D8" stroke-width="0.7"/>';
+    s+='<text x="'+(padL-6)+'" y="'+(Y(h)+4)+'" text-anchor="end" font-size="11" font-family="ui-monospace,monospace" fill="#5A6B73">'+h+' m</text>';
+  }
+  for(let t=Math.ceil(c.t0/step)*step;t<=c.t1;t+=step){
+    s+='<text x="'+X(t)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#5A6B73">'+fmtT(t).slice(0,5)+'</text>';
+  }
+  for(const[a,b]of c.windows){
+    s+='<rect x="'+X(a)+'" y="'+padT+'" width="'+(X(b)-X(a))+'" height="'+(H-padT-padB)+'" fill="#C2188C" opacity="0.10"/>';
+  }
+  s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(c.reqTide)+'" y2="'+Y(c.reqTide)+'" stroke="#C2188C" stroke-width="2" stroke-dasharray="6 4"/>';
+  s+='<text x="'+(W-padR-4)+'" y="'+(Y(c.reqTide)-5)+'" text-anchor="end" font-size="11.5" font-family="ui-monospace,monospace" font-weight="600" fill="#C2188C">Tiefgang + Marge</text>';
+  s+='<path d="'+path+'" fill="none" stroke="#2E6E8E" stroke-width="2.5"/>';
+  for(const e of c.ext){
+    s+='<circle cx="'+X(e.t)+'" cy="'+Y(e.h)+'" r="4" fill="#fff" stroke="#2E6E8E" stroke-width="2"/>';
+    s+='<text x="'+X(e.t)+'" y="'+(Y(e.h)+(e.type==="HW"?-10:18))+'" text-anchor="middle" font-size="11.5" font-family="ui-monospace,monospace" font-weight="600" fill="#1C2B33">'+e.type+' '+e.h.toFixed(1).replace(".",",")+'</text>';
+  }
+  for(const[a,b]of c.windows){
+    for(const t of[a,b]){
+      s+='<line x1="'+X(t)+'" x2="'+X(t)+'" y1="'+padT+'" y2="'+(H-padB)+'" stroke="#C2188C" stroke-width="1.5"/>';
+      s+='<text x="'+X(t)+'" y="'+(padT-5)+'" text-anchor="middle" font-size="11.5" font-family="ui-monospace,monospace" font-weight="600" fill="#C2188C">'+fmtT(t).slice(0,5)+'</text>';
+    }
+  }
+  return s+"</svg>";
+}
+
+// ---------- Rendering ----------
+const $=id=>document.getElementById(id);
+
+function renderRows(){
+  const c=$("rows");c.innerHTML="";
+  state.rows.forEach((r,i)=>{
+    const div=document.createElement("div");div.className="scheitel-row";
+    div.innerHTML=
+      '<select aria-label="Scheiteltyp"><option value="NW"'+(r.type==="NW"?" selected":"")+'>NW</option><option value="HW"'+(r.type==="HW"?" selected":"")+'>HW</option></select>'+
+      '<input type="time" aria-label="Uhrzeit" value="'+esc(r.time)+'">'+
+      '<input inputmode="decimal" aria-label="Höhe über SKN in Metern" placeholder="m ü. SKN" value="'+esc(r.height)+'">'+
+      '<button type="button" class="btn del" aria-label="Zeile entfernen"'+(state.rows.length<=2?' style="opacity:.35"':'')+'>✕</button>';
+    const[sel,tIn,hIn,del]=div.children;
+    sel.onchange=e=>{state.rows[i].type=e.target.value;update();};
+    tIn.onchange=e=>{state.rows[i].time=e.target.value;update();};
+    hIn.oninput=e=>{state.rows[i].height=e.target.value;update(false);};
+    hIn.onchange=()=>update();
+    del.onclick=()=>{if(state.rows.length>2){state.rows.splice(i,1);renderRows();update();}};
+    c.appendChild(div);
+  });
+}
+
+function renderResult(){
+  const c=calc();
+  $("reqinfo").innerHTML=c.error?"":
+    'Benötigte Tidenhöhe: <strong>'+f2(c.reqTide)+' m über SKN</strong>';
+  const out=$("result");
+  if(c.error){out.innerHTML='<div class="error">'+esc(c.error)+'</div>';return;}
+  const dateStr=state.date?state.date.split("-").reverse().join("."):"";
+  let html='<div class="banner"><div class="lbl">Befahrbares Zeitfenster · '+
+    esc(state.spotName||"Flache Stelle")+' · Pegel '+esc(state.pegel)+' · '+dateStr+'</div>';
+  if(c.windows.length===0){
+    html+='<div class="nowindow">Im betrachteten Zeitraum nicht befahrbar</div>';
+  }else{
+    for(const[a,b]of c.windows){
+      html+='<div class="window">'+fmtT(a)+' – '+fmtT(b)+' <small>('+fmtDur(b-a)+')</small></div>';
+    }
+  }
+  html+='</div>';
+  html+='<section class="card"><h2>Tidekurve über der Stelle</h2>'+svgChart(c)+'</section>';
+  html+='<section class="card tablewrap"><h2>Wasserstand je Stunde</h2><table><thead><tr>'+
+    '<th>Zeit</th><th>Tidenhöhe ü. SKN</th><th>Wassertiefe a. d. Stelle</th><th>Unter dem Kiel</th><th>Status</th></tr></thead><tbody>';
+  for(const r of c.table){
+    html+='<tr'+(r.ok?' class="ok"':'')+'><td><strong>'+fmtT(r.t)+'</strong></td>'+
+      '<td>'+f2(r.tide)+' m</td>'+
+      '<td>'+(r.depth>0?f2(r.depth)+" m":"trocken")+'</td>'+
+      '<td>'+(r.depth>0?f2(r.clearance)+" m":"—")+'</td>'+
+      '<td class="'+(r.ok?"status-ok":"status-no")+'">'+(r.ok?"befahrbar":"zu flach")+'</td></tr>';
+  }
+  html+='</tbody></table></section>';
+  out.innerHTML=html;
+}
+
+function renderDrySeg(){
+  document.querySelectorAll("#dryseg button").forEach(b=>{
+    b.classList.toggle("on",(b.dataset.dry==="1")===state.dry);
+  });
+  $("spotlbl").textContent=state.dry?"Watthöhe über SKN (m)":"Kartentiefe unter SKN (m)";
+}
+
+function update(persist=true){renderResult();if(persist)save();}
+
+// ---------- Init ----------
+(function init(){
+  const sel=$("pegel");
+  PEGEL.forEach(p=>{const o=document.createElement("option");o.value=p.name;o.textContent=p.name;sel.appendChild(o);});
+  sel.value=state.pegel;
+  $("datum").value=state.date;
+  $("spotname").value=state.spotName;
+  $("spotval").value=state.spotVal;
+  $("draft").value=state.draft;
+  $("margin").value=state.margin;
+  renderDrySeg();renderRows();renderResult();
+
+  sel.onchange=e=>{state.pegel=e.target.value;update();};
+  $("datum").onchange=e=>{state.date=e.target.value;update();};
+  $("spotname").oninput=e=>{state.spotName=e.target.value;update();};
+  $("spotval").oninput=e=>{state.spotVal=e.target.value;update();};
+  $("draft").oninput=e=>{state.draft=e.target.value;update();};
+  $("margin").oninput=e=>{state.margin=e.target.value;update();};
+  document.querySelectorAll("#dryseg button").forEach(b=>{
+    b.onclick=()=>{state.dry=b.dataset.dry==="1";renderDrySeg();update();};
+  });
+  $("addrow").onclick=()=>{
+    const last=state.rows[state.rows.length-1];
+    state.rows.push({type:last&&last.type==="HW"?"NW":"HW",time:"",height:""});
+    renderRows();update();
+  };
+  $("fillmeans").onclick=()=>{
+    const g=PEGEL.find(p=>p.name===state.pegel);
+    state.rows=state.rows.map(r=>({...r,height:String(r.type==="HW"?g.mhw:g.mnw)}));
+    renderRows();update();
+  };
+
+  if("serviceWorker"in navigator){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>
