@@ -97,6 +97,17 @@ summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--magenta)}
         <input type="date" id="datum">
       </div>
     </div>
+    <div class="row3" style="margin-top:10px">
+      <div>
+        <label class="lbl" for="surgeHW">Windstau zum HW (m)</label>
+        <input id="surgeHW" inputmode="decimal" placeholder="0,0">
+      </div>
+      <div>
+        <label class="lbl" for="surgeNW">Windstau zum NW (m)</label>
+        <input id="surgeNW" inputmode="decimal" placeholder="0,0">
+      </div>
+    </div>
+    <p class="hint" style="margin:8px 0 0">Getrennte Korrektur je Scheitel aus der BSH-Windstauvorhersage: + bei auflandigem Wind (höher), − bei ablandigem (niedriger). Zwischen HW und NW wird stufenlos überblendet.</p>
     <div id="daychip"></div>
   </section>
 
@@ -134,12 +145,14 @@ HW 03:58 1,1
       <label class="lbl" for="spotname">Bezeichnung</label>
       <input id="spotname" style="margin-bottom:10px">
       <label class="lbl">Art der Stelle</label>
-      <div class="seg" id="dryseg">
-        <button type="button" data-dry="1">Trockenfallend</button>
-        <button type="button" data-dry="0">Wassertiefe unter SKN</button>
+      <div class="seg" id="modeseg">
+        <button type="button" data-mode="dry">Trockenfallend</button>
+        <button type="button" data-mode="skn">Tiefe unter SKN</button>
+        <button type="button" data-mode="mhw">Tiefe bei MThw</button>
       </div>
       <label class="lbl" id="spotlbl" for="spotval">Watthöhe über SKN (m)</label>
       <input id="spotval" inputmode="decimal">
+      <p class="hint" id="mhwhint" style="display:none;margin:8px 0 0"></p>
     </section>
 
     <section class="card" style="margin-top:0">
@@ -168,7 +181,7 @@ HW 03:58 1,1
   (Asymmetrie, Windstau/Abwind). Höhen werden so übernommen, wie sie eingefügt werden, ohne Umrechnung des
   Bezugsniveaus – auf Werte über SKN achten. Werte stets mit der amtlichen BSH-Gezeitentafel und aktuellen
   Wasserstandsvorhersagen prüfen. Keine Gewähr, ersetzt nicht die eigene Navigation.
-  <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.2</span></p>
+  <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.5</span></p>
 </main>
 
 <script>
@@ -197,8 +210,8 @@ const todayISO=()=>{const d=new Date();
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
 let state={
   pegel:PEGEL[5].name, date:todayISO(),
-  dry:true, spotVal:"0.8", spotName:"Wattenhoch",
-  draft:"1.25", margin:"0.5",
+  mode:"dry", spotVal:"0.8", spotName:"Wattenhoch",
+  draft:"1.25", margin:"0.5", surgeHW:"0", surgeNW:"0",
   rows:[{type:"NW",time:"04:30",height:"0.6"},{type:"HW",time:"10:45",height:"4.3"},{type:"NW",time:"17:00",height:"0.6"}],
 };
 // Gespeicherte Monatsdaten: { pegelName: { "YYYY-MM-DD":[{type,time,height},...] } }
@@ -207,6 +220,7 @@ let tides={};
 let tidesRaw={};
 
 try{const s=JSON.parse(localStorage.getItem("tidenfenster-state"));if(s&&s.rows&&s.rows.length>=2)state={...state,...s};}catch(e){}
+if(!state.mode)state.mode=(state.dry===false)?"skn":"dry"; // Migration alter Zustände
 try{const t=JSON.parse(localStorage.getItem("tidenfenster-tides"));if(t&&typeof t==="object")tides=t;}catch(e){}
 try{const r=JSON.parse(localStorage.getItem("tidenfenster-tidesraw"));if(r&&typeof r==="object")tidesRaw=r;}catch(e){}
 
@@ -312,12 +326,18 @@ function parseMonth(txt,defaultYear){
 function calc(){
   const d=num(state.draft),mg=num(state.margin),sv=num(state.spotVal);
   if([d,mg,sv].some(isNaN))return{error:"Bitte alle Zahlenfelder ausfüllen."};
-  const chartDepth=state.dry?-Math.abs(sv):Math.abs(sv);
+  let surgeHW=num(state.surgeHW);if(isNaN(surgeHW))surgeHW=0;
+  let surgeNW=num(state.surgeNW);if(isNaN(surgeNW))surgeNW=0;
+  const g=PEGEL.find(p=>p.name===state.pegel)||{mhw:3.0};
+  let chartDepth;
+  if(state.mode==="dry")chartDepth=-Math.abs(sv);        // Watthöhe über SKN
+  else if(state.mode==="mhw")chartDepth=Math.abs(sv)-g.mhw; // Tiefe bei MThw → Seegrund = MThw − Tiefe
+  else chartDepth=Math.abs(sv);                          // Kartentiefe unter SKN
   const ext=[];
   for(const r of state.rows){
     const t=toMin(r.time),h=num(r.height);
     if(t===null||isNaN(h))return{error:"Bitte alle Gezeiten-Scheitel (Zeit und Höhe) ausfüllen."};
-    ext.push({t,h,type:r.type});
+    ext.push({t,h:h+(r.type==="HW"?surgeHW:surgeNW),type:r.type});
   }
   for(let i=1;i<ext.length;i++){
     while(ext[i].t<=ext[i-1].t)ext[i].t+=1440;
@@ -335,11 +355,11 @@ function calc(){
   }
   if(open!==null)windows.push([open,t1]);
   const table=[];
-  for(let t=Math.ceil(t0/60)*60;t<=t1;t+=60){
+  for(let t=Math.ceil(t0/30)*30;t<=t1;t+=30){
     const tide=tideAt(t,ext),depth=chartDepth+tide;
     table.push({t,tide,depth,ok:tide>=reqTide,clearance:depth-d});
   }
-  return{ext,chartDepth,reqTide,windows,table,t0,t1,draft:d};
+  return{ext,chartDepth,reqTide,windows,table,t0,t1,draft:d,surgeHW,surgeNW};
 }
 
 // ---------- SVG-Grafik ----------
@@ -415,8 +435,10 @@ function renderResult(){
   const out=$("result");
   if(c.error){out.innerHTML='<div class="error">'+esc(c.error)+'</div>';return;}
   const dateStr=state.date?state.date.split("-").reverse().join("."):"";
+  const sg=v=>(v>0?"+":"")+f2(v)+" m";
+  const surgeNote=(c.surgeHW||c.surgeNW)?' · Windstau HW '+sg(c.surgeHW)+' / NW '+sg(c.surgeNW):'';
   let html='<div class="banner"><div class="lbl">Befahrbares Zeitfenster · '+
-    esc(state.spotName||"Flache Stelle")+' · Pegel '+esc(state.pegel)+' · '+dateStr+'</div>';
+    esc(state.spotName||"Flache Stelle")+' · Pegel '+esc(state.pegel)+' · '+dateStr+surgeNote+'</div>';
   if(c.windows.length===0){
     html+='<div class="nowindow">Im betrachteten Zeitraum nicht befahrbar</div>';
   }else{
@@ -426,7 +448,7 @@ function renderResult(){
   }
   html+='</div>';
   html+='<section class="card"><h2>Tidekurve über der Stelle</h2>'+svgChart(c)+'</section>';
-  html+='<section class="card tablewrap"><h2>Wasserstand je Stunde</h2><table><thead><tr>'+
+  html+='<section class="card tablewrap"><h2>Wasserstand je halbe Stunde</h2><table><thead><tr>'+
     '<th>Zeit</th><th>Tidenhöhe ü. SKN</th><th>Wassertiefe a. d. Stelle</th><th>Unter dem Kiel</th><th>Status</th></tr></thead><tbody>';
   for(const r of c.table){
     html+='<tr'+(r.ok?' class="ok"':'')+'><td><strong>'+fmtT(r.t)+'</strong></td>'+
@@ -439,11 +461,19 @@ function renderResult(){
   out.innerHTML=html;
 }
 
-function renderDrySeg(){
-  document.querySelectorAll("#dryseg button").forEach(b=>{
-    b.classList.toggle("on",(b.dataset.dry==="1")===state.dry);
+function renderModeSeg(){
+  document.querySelectorAll("#modeseg button").forEach(b=>{
+    b.classList.toggle("on",b.dataset.mode===state.mode);
   });
-  $("spotlbl").textContent=state.dry?"Watthöhe über SKN (m)":"Kartentiefe unter SKN (m)";
+  const lbl=$("spotlbl"),hint=$("mhwhint");
+  if(state.mode==="dry"){lbl.textContent="Watthöhe über SKN (m)";hint.style.display="none";}
+  else if(state.mode==="skn"){lbl.textContent="Kartentiefe unter SKN (m)";hint.style.display="none";}
+  else{
+    lbl.textContent="Wassertiefe bei MThw (m)";
+    const g=PEGEL.find(p=>p.name===state.pegel)||{mhw:3.0};
+    hint.style.display="";
+    hint.textContent="Umrechnung mit MThw "+state.pegel+": "+f2(g.mhw)+" m über SKN. Seegrund = MThw − Tiefe. MThw ist ein Mittelwert – bei genauen Tafelwerten anpassen.";
+  }
 }
 
 // Gespeicherte-Daten-Status für aktuellen Pegel
@@ -490,22 +520,26 @@ function update(persist=true){renderResult();if(persist)save();}
   $("spotval").value=state.spotVal;
   $("draft").value=state.draft;
   $("margin").value=state.margin;
+  $("surgeHW").value=state.surgeHW;
+  $("surgeNW").value=state.surgeNW;
   $("tidata").value=tidesRaw[state.pegel]||"";
-  renderDrySeg();renderRows();renderStoreStatus();
+  renderModeSeg();renderRows();renderStoreStatus();
   loadDayFromStore();update();
 
   sel.onchange=e=>{
     state.pegel=e.target.value;
     $("tidata").value=tidesRaw[state.pegel]||"";
-    renderStoreStatus();loadDayFromStore();update();
+    renderStoreStatus();renderModeSeg();loadDayFromStore();update();
   };
   $("datum").onchange=e=>{state.date=e.target.value;loadDayFromStore();update();};
   $("spotname").oninput=e=>{state.spotName=e.target.value;update();};
   $("spotval").oninput=e=>{state.spotVal=e.target.value;update();};
   $("draft").oninput=e=>{state.draft=e.target.value;update();};
   $("margin").oninput=e=>{state.margin=e.target.value;update();};
-  document.querySelectorAll("#dryseg button").forEach(b=>{
-    b.onclick=()=>{state.dry=b.dataset.dry==="1";renderDrySeg();update();};
+  $("surgeHW").oninput=e=>{state.surgeHW=e.target.value;update();};
+  $("surgeNW").oninput=e=>{state.surgeNW=e.target.value;update();};
+  document.querySelectorAll("#modeseg button").forEach(b=>{
+    b.onclick=()=>{state.mode=b.dataset.mode;renderModeSeg();update();};
   });
   $("addrow").onclick=()=>{
     const last=state.rows[state.rows.length-1];
