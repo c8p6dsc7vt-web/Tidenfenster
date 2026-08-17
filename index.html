@@ -172,6 +172,62 @@ HW 03:58 1,1
   </div>
 
   <section class="card">
+    <h2>Live-Pegel (nur mit Internet)</h2>
+    <details id="livebox">
+      <summary>Aktuellen Messwert abrufen</summary>
+      <p class="hint" style="margin-top:10px">
+        Holt den aktuellen Rohmesswert des Pegels von PEGELONLINE (WSV) und rechnet ihn auf SKN um.
+        Der Live-Wert enthält den heutigen Windstau bereits.
+      </p>
+      <div class="row3">
+        <div>
+          <label class="lbl" for="postation">PEGELONLINE-Station</label>
+          <input id="postation">
+        </div>
+        <div>
+          <label class="lbl" for="posknpnp">SKN über Pegelnull (cm)</label>
+          <input id="posknpnp" inputmode="decimal" placeholder="z.B. 288">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button type="button" class="btn primary" id="livefetch">Live-Pegel abrufen</button>
+      </div>
+      <div id="livestatus"></div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Kalibrierung durch eigene Peilungen</h2>
+    <details id="calibbox">
+      <summary>Peilungen erfassen und Watthöhe ermitteln</summary>
+      <p class="hint" style="margin-top:10px">
+        Jede eigene Lotung ergibt eine Watthöhe: <em>Wasserstand über SKN − gemessene Wassertiefe</em>.
+        Mehrere Peilungen zu verschiedenen Tidenphasen zeigen über ihre Streuung, wie gut die Stelle
+        an den Pegel gekoppelt ist – das ist die gesuchte Abweichung.
+      </p>
+      <div class="row3">
+        <div>
+          <label class="lbl" for="calibPegel">Wasserstand ü. SKN (m)</label>
+          <input id="calibPegel" inputmode="decimal" placeholder="z.B. 3,60">
+        </div>
+        <div>
+          <label class="lbl" for="calibDepth">gemessene Wassertiefe (m)</label>
+          <input id="calibDepth" inputmode="decimal" placeholder="z.B. 1,80">
+        </div>
+        <div>
+          <label class="lbl" for="calibNote">Notiz (Datum/Phase)</label>
+          <input id="calibNote" placeholder="11.08. HW−0:35">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button type="button" class="btn primary" id="calibAdd">Peilung hinzufügen</button>
+        <button type="button" class="btn" id="calibApply">Mittelwert als Watthöhe übernehmen</button>
+      </div>
+      <div id="calibList"></div>
+    </details>
+  </section>
+
+  <section class="card">
     <h2>Gezeiten-Scheitel des gewählten Tages</h2>
     <p class="hint">Automatisch aus den gespeicherten Monatsdaten geladen – jederzeit überschreibbar. Höhen über SKN.</p>
     <div id="rows"></div>
@@ -227,7 +283,7 @@ HW 03:58 1,1
         <p style="margin:0"><strong>Keine Zusicherung.</strong> Es wird keine Gewähr für Verfügbarkeit, Fehlerfreiheit, Aktualität oder Eignung für einen bestimmten Zweck übernommen.</p>
       </div>
     </details>
-    <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.8</span>
+    <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.9</span>
   </div>
 </main>
 
@@ -235,28 +291,31 @@ HW 03:58 1,1
 "use strict";
 // ---------- Pegel (MHW/MNW über SKN, Näherungswerte als Komfortfunktion) ----------
 const PEGEL=[
- {name:"Emden, Neue Seeschleuse",mhw:3.5,mnw:0.4},
- {name:"Borkum, Fischerbalje",mhw:2.8,mnw:0.4},
- {name:"Juist",mhw:2.8,mnw:0.4},
- {name:"Norderney, Riffgat",mhw:2.9,mnw:0.4},
- {name:"Baltrum",mhw:3.0,mnw:0.4},
- {name:"Langeoog",mhw:3.1,mnw:0.4},
- {name:"Spiekeroog",mhw:3.2,mnw:0.4},
- {name:"Wangerooge, West",mhw:3.3,mnw:0.4},
- {name:"Wangerooge, Ost",mhw:3.4,mnw:0.5},
- {name:"Wangerooge, Langes Riff",mhw:3.2,mnw:0.5},
- {name:"Minsener Oog",mhw:3.6,mnw:0.5},
- {name:"Schillig",mhw:3.9,mnw:0.5},
- {name:"Hooksiel, Außenhafen",mhw:4.2,mnw:0.6},
- {name:"Wilhelmshaven, Alter Vorhafen",mhw:4.3,mnw:0.6},
- {name:"Bremerhaven, Alter Leuchtturm",mhw:4.2,mnw:0.5},
- {name:"Helgoland, Binnenhafen",mhw:2.7,mnw:0.4},
- {name:"Cuxhaven, Steubenhöft",mhw:3.4,mnw:0.4},
- {name:"Büsum",mhw:3.7,mnw:0.4},
- {name:"Husum",mhw:3.9,mnw:0.3},
- {name:"Wittdün, Amrum",mhw:3.0,mnw:0.4},
- {name:"Dagebüll",mhw:3.3,mnw:0.4},
- {name:"List auf Sylt",mhw:2.2,mnw:0.4},
+ // po = Stationsname bei PEGELONLINE (WSV); sknPnp = Seekartennull über Pegelnullpunkt in cm
+ // sknPnp nur gesetzt, wo aus der GDWS-Aufstellung belegt (Stand Dez. 2025 für 2026); sonst null
+ {name:"Emden, Neue Seeschleuse",mhw:3.5,mnw:0.4,po:"EMDEN NEUE SEESCHLEUSE",sknPnp:null},
+ {name:"Borkum, Fischerbalje",mhw:2.8,mnw:0.4,po:"BORKUM FISCHERBALJE",sknPnp:null},
+ {name:"Juist",mhw:2.8,mnw:0.4,po:"JUIST",sknPnp:null},
+ {name:"Norderney, Riffgat",mhw:2.9,mnw:0.4,po:"NORDERNEY RIFFGAT",sknPnp:null},
+ {name:"Baltrum",mhw:3.0,mnw:0.4,po:"BALTRUM",sknPnp:null},
+ {name:"Langeoog",mhw:3.1,mnw:0.4,po:"LANGEOOG",sknPnp:null},
+ {name:"Spiekeroog",mhw:3.2,mnw:0.4,po:"SPIEKEROOG",sknPnp:314},
+ {name:"Wangerooge, West",mhw:3.3,mnw:0.4,po:"WANGEROOGE WEST",sknPnp:297},
+ {name:"Wangerooge, Ost",mhw:3.4,mnw:0.5,po:"WANGEROOGE OST",sknPnp:288},
+ {name:"Wangerooge, Langes Riff (Nord)",mhw:3.2,mnw:0.5,po:"WANGEROOGE NORD",sknPnp:296},
+ {name:"Minsener Oog",mhw:3.6,mnw:0.5,po:"MINSENER OOG",sknPnp:null},
+ {name:"Schillig",mhw:3.9,mnw:0.5,po:"SCHILLIG",sknPnp:266},
+ {name:"Hooksielplate",mhw:4.0,mnw:0.5,po:"HOOKSIELPLATE",sknPnp:255},
+ {name:"Hooksiel, Außenhafen",mhw:4.2,mnw:0.6,po:"HOOKSIEL",sknPnp:null},
+ {name:"Wilhelmshaven, Alter Vorhafen",mhw:4.3,mnw:0.6,po:"WILHELMSHAVEN ALTER VORHAFEN",sknPnp:null},
+ {name:"Bremerhaven, Alter Leuchtturm",mhw:4.2,mnw:0.5,po:"BREMERHAVEN ALTER LEUCHTTURM",sknPnp:null},
+ {name:"Helgoland, Binnenhafen",mhw:2.7,mnw:0.4,po:"HELGOLAND BINNENHAFEN",sknPnp:null},
+ {name:"Cuxhaven, Steubenhöft",mhw:3.4,mnw:0.4,po:"CUXHAVEN STEUBENHÖFT",sknPnp:null},
+ {name:"Büsum",mhw:3.7,mnw:0.4,po:"BÜSUM",sknPnp:null},
+ {name:"Husum",mhw:3.9,mnw:0.3,po:"HUSUM",sknPnp:null},
+ {name:"Wittdün, Amrum",mhw:3.0,mnw:0.4,po:"WITTDÜN",sknPnp:null},
+ {name:"Dagebüll",mhw:3.3,mnw:0.4,po:"DAGEBÜLL",sknPnp:null},
+ {name:"List auf Sylt",mhw:2.2,mnw:0.4,po:"LIST",sknPnp:null},
 ];
 
 // ---------- Zustand ----------
@@ -266,6 +325,7 @@ let state={
   pegel:PEGEL[5].name, date:todayISO(),
   mode:"dry", spotVal:"0.8", spotName:"Wattenhoch",
   draft:"1.25", margin:"0.5", surgeHW:"0", surgeNW:"0",
+  poStation:"", poSknPnp:"",
   rows:[{type:"NW",time:"04:30",height:"0.6"},{type:"HW",time:"10:45",height:"4.3"},{type:"NW",time:"17:00",height:"0.6"}],
 };
 // Gespeicherte Monatsdaten: { pegelName: { "YYYY-MM-DD":[{type,time,height},...] } }
@@ -283,6 +343,11 @@ const saveTides=()=>{try{
   localStorage.setItem("tidenfenster-tides",JSON.stringify(tides));
   localStorage.setItem("tidenfenster-tidesraw",JSON.stringify(tidesRaw));
 }catch(e){}};
+
+// Peilungen je Stelle: { "stellenname": [{pegel,depth,note}] }
+let calib={};
+try{const cb=JSON.parse(localStorage.getItem("tidenfenster-calib"));if(cb&&typeof cb==="object")calib=cb;}catch(e){}
+const saveCalib=()=>{try{localStorage.setItem("tidenfenster-calib",JSON.stringify(calib));}catch(e){}};
 
 // ---------- Hilfsfunktionen ----------
 const toMin=s=>{if(!s)return null;const[a,b]=s.split(":").map(Number);
@@ -318,13 +383,18 @@ const tideAt=(t,ext)=>{
 
 // Fehlende HW/NW-Typen ergänzen (aus Höhe via Median, sonst alternierend)
 function assignTypes(arr){
-  const withH=arr.filter(o=>o.height!=="");
-  const vals=withH.map(o=>parseFloat(o.height)).sort((a,b)=>a-b);
-  const med=vals.length?vals[Math.floor(vals.length/2)]:0;
+  // Fehlende Typen aus dem Vergleich mit den Nachbarhöhen ableiten
+  // (ein Scheitel ist HW, wenn er höher liegt als der benachbarte Scheitel)
+  const h=i=>(i>=0&&i<arr.length&&arr[i].height!=="")?parseFloat(arr[i].height):NaN;
   for(let i=0;i<arr.length;i++){
     if(arr[i].type)continue;
-    if(arr[i].height!=="")arr[i].type=parseFloat(arr[i].height)>=med?"HW":"NW";
-    else if(i>0&&arr[i-1].type)arr[i].type=arr[i-1].type==="HW"?"NW":"HW";
+    const hi=h(i),hp=h(i-1),hn=h(i+1);
+    if(!isNaN(hi)&&(!isNaN(hp)||!isNaN(hn))){
+      const ref=!isNaN(hp)?hp:hn;
+      if(hi!==ref){arr[i].type=hi>ref?"HW":"NW";continue;}
+    }
+    if(i>0&&arr[i-1].type)arr[i].type=arr[i-1].type==="HW"?"NW":"HW";
+    else if(i<arr.length-1&&arr[i+1].type)arr[i].type=arr[i+1].type==="HW"?"NW":"HW";
     else arr[i].type="HW";
   }
 }
@@ -348,17 +418,25 @@ function parseMonth(txt,defaultYear){
     if(!curKey)continue;
     // Tokens; Zeiten nur mit Doppelpunkt (HH:MM), Höhen mit , oder .
     const toks=line.split(/[\s;|]+/).filter(Boolean);
-    let cur=null;
+    let cur=null,pendingType=null;
     for(const tk of toks){
       const tm=tk.match(/^(\d{1,2}):(\d{2})$/);
       if(tm){
         if(cur)store[curKey].push(cur);
-        cur={type:null,time:pad(Math.min(23,+tm[1]))+":"+pad(Math.min(59,+tm[2])),height:""};
+        cur={type:pendingType,time:pad(Math.min(23,+tm[1]))+":"+pad(Math.min(59,+tm[2])),height:""};
+        pendingType=null;
+        continue;
+      }
+      // HW/NW kann vor ODER nach der Uhrzeit stehen
+      if(/^(hw|hochwasser|h)$/i.test(tk)){
+        if(cur&&!cur.type)cur.type="HW";else pendingType="HW";
+        continue;
+      }
+      if(/^(nw|niedrigwasser|n)$/i.test(tk)){
+        if(cur&&!cur.type)cur.type="NW";else pendingType="NW";
         continue;
       }
       if(!cur)continue;
-      if(/^(hw|hochwasser|h)$/i.test(tk)){cur.type="HW";continue;}
-      if(/^(nw|niedrigwasser|n)$/i.test(tk)){cur.type="NW";continue;}
       const hm=tk.match(/^(-?\d+[.,]\d+)$/);
       if(hm&&cur.height===""){cur.height=hm[1].replace(",",".");continue;}
     }
@@ -374,6 +452,18 @@ function parseMonth(txt,defaultYear){
     store[k]=arr;
   }
   return store;
+}
+
+// Scheitel des Vor- und Folgetages aus den gespeicherten Monatsdaten
+function neighborScheitel(){
+  const store=tides[state.pegel]||{};
+  if(!state.date)return{pre:[],post:[]};
+  const key=x=>x.getFullYear()+"-"+pad(x.getMonth()+1)+"-"+pad(x.getDate());
+  const d=new Date(state.date+"T00:00:00");
+  if(isNaN(d.getTime()))return{pre:[],post:[]};
+  const p=new Date(d);p.setDate(p.getDate()-1);
+  const n=new Date(d);n.setDate(n.getDate()+1);
+  return{pre:store[key(p)]||[],post:store[key(n)]||[]};
 }
 
 // ---------- Berechnung ----------
@@ -397,6 +487,25 @@ function calc(){
     while(ext[i].t<=ext[i-1].t)ext[i].t+=1440;
     if(ext[i].type===ext[i-1].type)return{error:"Die Scheitel müssen abwechselnd NW und HW sein."};
   }
+  // Nachbartage aus den gespeicherten Monatsdaten anhängen, damit die Kurve
+  // die vollen 24 h abdeckt und Fenster am Rand nicht abgeschnitten werden
+  const nb=neighborScheitel();
+  let dayStart=0, dayEnd=1440; // Fenster des gewählten Kalendertages in ext-Zeitrechnung
+  if(nb.pre.length){
+    const p=nb.pre[nb.pre.length-1];
+    const pt=toMin(p.time)-1440;
+    if(pt<ext[0].t && p.type!==ext[0].type){
+      ext.unshift({t:pt,h:num(p.height)+(p.type==="HW"?surgeHW:surgeNW),type:p.type});
+    }
+  }
+  if(nb.post.length){
+    const q=nb.post[0];
+    const last=ext[ext.length-1];
+    const qt=toMin(q.time)+1440;
+    if(qt>last.t && q.type!==last.type){
+      ext.push({t:qt,h:num(q.height)+(q.type==="HW"?surgeHW:surgeNW),type:q.type});
+    }
+  }
   const reqTide=d+mg-chartDepth;
   const t0=ext[0].t,t1=ext[ext.length-1].t;
   const windows=[];let open=null;let prevOk=tideAt(t0,ext)>=reqTide;
@@ -408,8 +517,11 @@ function calc(){
     prevOk=ok;
   }
   if(open!==null)windows.push([open,t1]);
+  // Tabelle: volle 24 h des gewählten Tages (00:00–23:30).
+  // Zeiten ausserhalb der Stützpunkte werden als "keine Daten" markiert statt geklemmt.
   const table=[];
-  for(let t=Math.ceil(t0/30)*30;t<=t1;t+=30){
+  for(let t=dayStart;t<dayEnd;t+=30){
+    if(t<t0||t>t1){ table.push({t,noData:true}); continue; }
     const tide=tideAt(t,ext),depth=chartDepth+tide;
     table.push({t,tide,depth,ok:tide>=reqTide,clearance:depth-d});
   }
@@ -502,9 +614,14 @@ function renderResult(){
   }
   html+='</div>';
   html+='<section class="card"><h2>Tidekurve über der Stelle</h2>'+svgChart(c)+'</section>';
-  html+='<section class="card tablewrap"><h2>Wasserstand je halbe Stunde</h2><table><thead><tr>'+
+  html+='<section class="card tablewrap"><h2>Wasserstand über 24 Stunden (halbstündlich)</h2><table><thead><tr>'+
     '<th>Zeit</th><th>Tidenhöhe ü. SKN</th><th>Wassertiefe a. d. Stelle</th><th>Unter dem Kiel</th><th>Status</th></tr></thead><tbody>';
   for(const r of c.table){
+    if(r.noData){
+      html+='<tr><td><strong>'+fmtT(r.t)+'</strong></td>'+
+        '<td colspan="4" style="color:var(--muted)">keine Scheiteldaten – Nachbartag eingeben</td></tr>';
+      continue;
+    }
     html+='<tr'+(r.ok?' class="ok"':'')+'><td><strong>'+fmtT(r.t)+'</strong></td>'+
       '<td>'+f2(r.tide)+' m</td>'+
       '<td>'+(r.depth>0?f2(r.depth)+" m":"trocken")+'</td>'+
@@ -562,6 +679,109 @@ function loadDayFromStore(){
   renderDayChip();
 }
 
+// ---------- Live-Pegel (PEGELONLINE) ----------
+function poStation(){
+  const g=PEGEL.find(p=>p.name===state.pegel)||{};
+  return (state.poStation&&state.poStation.trim())||g.po||"";
+}
+function poSknPnp(){
+  const g=PEGEL.find(p=>p.name===state.pegel)||{};
+  const v=num(state.poSknPnp);
+  if(!isNaN(v))return v;
+  return (typeof g.sknPnp==="number")?g.sknPnp:null;
+}
+async function fetchLive(){
+  const el=$("livestatus");
+  const st=poStation(), sp=poSknPnp();
+  if(!st){el.innerHTML='<div class="status err">Kein Stationsname hinterlegt.</div>';return;}
+  el.innerHTML='<div class="status warn">Abruf läuft …</div>';
+  try{
+    const url="https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/"+
+      encodeURIComponent(st)+"/W/currentmeasurement.json";
+    const res=await fetch(url,{cache:"no-store"});
+    if(!res.ok)throw new Error("HTTP "+res.status+(res.status===404?" – Stationsname unbekannt":""));
+    const j=await res.json();
+    if(typeof j.value!=="number")throw new Error("Kein Messwert in der Antwort.");
+    const ts=new Date(j.timestamp);
+    const ageMin=Math.round((Date.now()-ts.getTime())/60000);
+    const pnpM=j.value/100;
+    let html='<div class="status ok"><strong>'+st+'</strong><br>'+
+      'Messwert: '+f2(pnpM)+' m über Pegelnull ('+j.value.toFixed(0)+' cm)<br>'+
+      'Zeitpunkt: '+ts.toLocaleString("de-DE")+(ageMin>=0?' (vor '+ageMin+' min)':'')+'<br>';
+    if(sp===null){
+      html+='<em>SKN-Bezug fehlt – bitte "SKN über Pegelnull" eintragen, sonst keine Umrechnung möglich.</em>';
+    }else{
+      const skn=pnpM-sp/100;
+      state.liveSkn=skn;
+      html+='<strong>Wasserstand: '+f2(skn)+' m über SKN</strong>';
+      const c=calc();
+      if(!c.error){
+        const depth=c.chartDepth+skn;
+        const clear=depth-c.draft;
+        html+='<br>An der Stelle jetzt: '+(depth>0?f2(depth)+' m Wasser':'trocken')+
+          (depth>0?' · unter dem Kiel '+f2(clear)+' m':'');
+      }
+      // Vergleich mit der Vorausberechnung -> realer Windstau
+      const c2=calc();
+      if(!c2.error){
+        const nowMin=new Date().getHours()*60+new Date().getMinutes();
+        if(nowMin>=c2.t0&&nowMin<=c2.t1){
+          const pred=tideAt(nowMin,c2.ext);
+          html+='<br>Vorausberechnung jetzt: '+f2(pred)+' m ü. SKN · Differenz '+
+            ((skn-pred)>=0?"+":"")+f2(skn-pred)+' m';
+        }
+      }
+    }
+    if(ageMin>60)html+='<br><em>Achtung: Messwert älter als eine Stunde.</em>';
+    html+='<br><span style="font-size:11px">Rohdaten © www.pegelonline.wsv.de – ungeprüft</span></div>';
+    el.innerHTML=html;
+  }catch(err){
+    el.innerHTML='<div class="status err">Abruf fehlgeschlagen: '+esc(err.message)+
+      '<br>Mögliche Gründe: keine Internetverbindung, falscher Stationsname, oder der Dienst erlaubt '+
+      'keinen direkten Zugriff aus dem Browser.</div>';
+  }
+}
+
+// ---------- Kalibrierung ----------
+function calibKey(){return (state.spotName||"Stelle").trim().toLowerCase();}
+function calibItems(){return (calib[calibKey()]||[]);}
+function calibHeights(){
+  return calibItems().map(o=>num(o.pegel)-num(o.depth)).filter(v=>!isNaN(v));
+}
+function renderCalib(){
+  const el=$("calibList");if(!el)return;
+  const items=calibItems();
+  if(items.length===0){
+    el.innerHTML='<div class="status warn">Noch keine Peilungen für „'+esc(state.spotName||"Stelle")+'".</div>';
+    return;
+  }
+  const hs=calibHeights();
+  const mean=hs.reduce((a,b)=>a+b,0)/hs.length;
+  const min=Math.min(...hs),max=Math.max(...hs);
+  let html='<table style="margin-top:10px"><thead><tr><th>Wasserstand</th><th>Tiefe</th><th>Watthöhe</th><th>Notiz</th><th></th></tr></thead><tbody>';
+  items.forEach((o,i)=>{
+    const h=num(o.pegel)-num(o.depth);
+    html+='<tr><td>'+f2(num(o.pegel))+' m</td><td>'+f2(num(o.depth))+' m</td>'+
+      '<td><strong>'+f2(h)+' m</strong></td><td style="white-space:normal">'+esc(o.note||"")+'</td>'+
+      '<td><button type="button" class="btn calibdel" data-i="'+i+'" style="padding:4px 8px;color:var(--danger)">✕</button></td></tr>';
+  });
+  html+='</tbody></table>';
+  html+='<div class="status '+((max-min)<=0.15?"ok":"warn")+'">'+
+    'Mittelwert: <strong>'+f2(mean)+' m über SKN</strong> · Streuung '+f2(max-min)+' m ('+f2(min)+'–'+f2(max)+' m)<br>'+
+    ((max-min)<=0.15
+      ? 'Geringe Streuung – die Stelle folgt dem Pegel gut.'
+      : 'Größere Streuung – Zeitversatz oder abweichender Tidenhub gegenüber dem Pegel. Im Zweifel den höchsten Wert (flachste Annahme) verwenden.')+
+    '</div>';
+  el.innerHTML=html;
+  el.querySelectorAll(".calibdel").forEach(b=>{
+    b.onclick=()=>{
+      const i=+b.dataset.i;const k=calibKey();
+      calib[k].splice(i,1);if(calib[k].length===0)delete calib[k];
+      saveCalib();renderCalib();
+    };
+  });
+}
+
 function update(persist=true){renderResult();if(persist)save();}
 
 // ---------- Init ----------
@@ -583,7 +803,13 @@ function update(persist=true){renderResult();if(persist)save();}
   sel.onchange=e=>{
     state.pegel=e.target.value;
     $("tidata").value=tidesRaw[state.pegel]||"";
+    state.poStation="";state.poSknPnp="";
     renderStoreStatus();renderModeSeg();loadDayFromStore();update();
+    const g=PEGEL.find(p=>p.name===state.pegel)||{};
+    $("postation").placeholder=g.po||"Stationsname";
+    $("posknpnp").placeholder=(typeof g.sknPnp==="number")?String(g.sknPnp):"unbekannt – eintragen";
+    $("postation").value="";$("posknpnp").value="";
+    $("livestatus").innerHTML="";
   };
   $("datum").onchange=e=>{state.date=e.target.value;loadDayFromStore();update();};
   $("spotname").oninput=e=>{state.spotName=e.target.value;update();};
@@ -598,6 +824,44 @@ function update(persist=true){renderResult();if(persist)save();}
   };
   $("signHW").onclick=()=>flipSign("surgeHW");
   $("signNW").onclick=()=>flipSign("surgeNW");
+
+  // Live-Pegel
+  const syncPoFields=()=>{
+    const g=PEGEL.find(p=>p.name===state.pegel)||{};
+    $("postation").placeholder=g.po||"Stationsname";
+    $("posknpnp").placeholder=(typeof g.sknPnp==="number")?String(g.sknPnp):"unbekannt – eintragen";
+    $("postation").value=state.poStation||"";
+    $("posknpnp").value=state.poSknPnp||"";
+  };
+  syncPoFields();
+  $("postation").oninput=e=>{state.poStation=e.target.value;save();};
+  $("posknpnp").oninput=e=>{state.poSknPnp=e.target.value;save();};
+  $("livefetch").onclick=fetchLive;
+
+  // Kalibrierung
+  renderCalib();
+  $("calibAdd").onclick=()=>{
+    const p=$("calibPegel").value,d=$("calibDepth").value,n=$("calibNote").value;
+    if(isNaN(num(p))||isNaN(num(d))){
+      $("calibList").innerHTML='<div class="status err">Bitte Wasserstand und gemessene Wassertiefe eintragen.</div>';
+      return;
+    }
+    const k=calibKey();
+    if(!calib[k])calib[k]=[];
+    calib[k].push({pegel:String(num(p)),depth:String(num(d)),note:n||""});
+    saveCalib();
+    $("calibPegel").value="";$("calibDepth").value="";$("calibNote").value="";
+    renderCalib();
+  };
+  $("calibApply").onclick=()=>{
+    const hs=calibHeights();
+    if(hs.length===0){renderCalib();return;}
+    const mean=hs.reduce((a,b)=>a+b,0)/hs.length;
+    state.mode="dry";state.spotVal=mean.toFixed(2);
+    $("spotval").value=state.spotVal.replace(".",",");
+    renderModeSeg();update();
+  };
+  $("spotname").addEventListener("input",renderCalib);
   document.querySelectorAll("#modeseg button").forEach(b=>{
     b.onclick=()=>{state.mode=b.dataset.mode;renderModeSeg();update();};
   });
