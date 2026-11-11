@@ -1,4 +1,6 @@
-const CACHE = "tidenfenster-v10";
+// Tidenfenster – Offline-Speicher für die App selbst.
+// Abrufe bei BSH und PEGELONLINE laufen bewusst NICHT über diesen Speicher: Messwerte und Vorhersagen dürfen nie aus einem alten Zwischenstand kommen.
+const CACHE = "tidenfenster-v20";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
@@ -7,22 +9,28 @@ self.addEventListener("install", (e) => {
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// Netz zuerst (damit Updates ankommen), bei Offline aus dem Cache
+// Netz zuerst (damit neue Versionen ankommen), ohne Netz aus dem Speicher
 self.addEventListener("fetch", (e) => {
-  if (e.request.method !== "GET") return;
+  const req = e.request;
+  if (req.method !== "GET") return;
+  if (new URL(req.url).origin !== self.location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(req)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
         return res;
       })
-      .catch(() => caches.match(e.request, { ignoreSearch: true }).then((m) => m || caches.match("./index.html")))
+      .catch(() =>
+        caches.match(req, { ignoreSearch: true }).then((m) => m || (req.mode === "navigate" ? caches.match("./index.html") : Response.error()))
+      )
   );
 });

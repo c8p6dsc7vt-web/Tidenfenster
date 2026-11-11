@@ -1,906 +1,1990 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tidenfenster</title>
-<meta name="description" content="Tidenfenster-Rechner für flache Stellen im Wattenmeer – Kosinus-Näherung zwischen den Gezeitenscheiteln der BSH-Tafel.">
+<meta name="description" content="Tidenfenster: wann eine flache Stelle im Wattenmeer für das eigene Schiff tief genug ist.">
+<meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1C2B33">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Tidenfenster">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
+<script>try{var t=JSON.parse(localStorage.getItem("tf2:state")||"{}").theme;if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <style>
 :root{
-  --paper:#F2F4F0; --ink:#1C2B33; --blue1:#BFDCEA; --curve:#2E6E8E;
-  --watt:#A9C79C; --wattdark:#5E7D52; --sand:#D9CFA8;
-  --magenta:#C2188C; --grid:#C7D2D8; --danger:#B3261E; --muted:#5A6B73; --okgreen:#2E7D46;
+  --paper:#F2F4F0; --card:#FFFFFF; --ink:#1C2B33; --muted:#566871; --line:#C7D2D8;
+  --water:#BFDCEA; --curve:#2E6E8E; --watt:#A9C79C; --wattline:#5E7D52; --sand:#D9CFA8;
+  --mag:#C2188C; --mag-soft:rgba(194,24,140,.08); --mag-ink:#FFFFFF;
+  --danger:#B3261E; --danger-soft:#FBEDEC; --ok:#2E7D46; --ok-soft:rgba(46,125,70,.11); --warn:#8A5A00; --warn-soft:#FFF4D6;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --cond:"Avenir Next Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;
+  --tabh:58px;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --paper:#0C1418; --card:#152027; --ink:#E4ECEF; --muted:#94A6AF; --line:#2C3C45;
+  --water:#1D4254; --curve:#72BADB; --watt:#34502F; --wattline:#86B279; --sand:#514A31;
+  --mag:#FF74C8; --mag-soft:rgba(255,116,200,.13); --mag-ink:#1A0A14;
+  --danger:#FF8C82; --danger-soft:#3A1917; --ok:#7FD494; --ok-soft:rgba(127,212,148,.13); --warn:#F2C56B; --warn-soft:#3A2E12;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root[data-theme="auto"]{
+    --paper:#0C1418; --card:#152027; --ink:#E4ECEF; --muted:#94A6AF; --line:#2C3C45;
+    --water:#1D4254; --curve:#72BADB; --watt:#34502F; --wattline:#86B279; --sand:#514A31;
+    --mag:#FF74C8; --mag-soft:rgba(255,116,200,.13); --mag-ink:#1A0A14;
+    --danger:#FF8C82; --danger-soft:#3A1917; --ok:#7FD494; --ok-soft:rgba(127,212,148,.13); --warn:#F2C56B; --warn-soft:#3A2E12;
+    color-scheme:dark;
+  }
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  padding-bottom:max(48px, env(safe-area-inset-bottom));}
-header{border-bottom:3px solid var(--ink);background:#fff;
-  padding:calc(14px + env(safe-area-inset-top)) 20px 12px;}
-.wrap{max-width:860px;margin:0 auto;padding:0 14px}
-header .wrap{padding:0}
-.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--magenta);font-weight:600}
-h1{font-family:var(--cond);font-weight:700;font-size:32px;margin:2px 0 0;letter-spacing:.01em}
-main{max-width:860px;margin:0 auto;padding:16px 14px 0}
-.card{background:#fff;border:1.5px solid var(--grid);border-radius:6px;padding:14px;margin-top:14px}
-.card h2{font-family:var(--cond);font-size:19px;margin:0 0 10px;font-weight:700}
-label.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px}
-input,select,textarea{font-family:var(--mono);font-size:16px;padding:8px 9px;border:1.5px solid var(--grid);
-  border-radius:4px;background:#fff;color:var(--ink);width:100%;}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--magenta);outline-offset:1px}
-textarea{resize:vertical;line-height:1.4}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:14px}
-.row3{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
-.seg{display:flex;gap:6px;margin-bottom:10px}
-.seg button{flex:1;padding:8px 4px;font-size:12.5px;font-weight:600;border-radius:4px;cursor:pointer;
-  border:1.5px solid var(--grid);background:#fff;color:var(--ink)}
-.seg button.on{border-color:var(--magenta);background:var(--magenta);color:#fff}
-.btn{padding:9px 14px;font-size:13.5px;font-weight:600;border-radius:4px;cursor:pointer;
-  border:1.5px solid var(--grid);background:#fff;color:var(--ink)}
-.btn.primary{border-color:var(--magenta);background:var(--magenta);color:#fff}
-.hint{font-size:13px;color:var(--muted);margin:0 0 10px}
-.status{font-size:12.5px;font-family:var(--mono);margin:8px 0 0;padding:7px 9px;border-radius:4px}
-.status.ok{background:rgba(46,125,70,.10);color:var(--okgreen);border:1px solid rgba(46,125,70,.35)}
-.status.warn{background:rgba(194,24,140,.07);color:var(--ink);border:1px solid rgba(194,24,140,.3)}
-.status.err{background:#FBEDEC;color:var(--danger);border:1px solid var(--danger)}
-.daychip{display:inline-block;font-family:var(--mono);font-size:12px;margin:8px 0 0;padding:4px 8px;border-radius:4px;font-weight:600}
-.daychip.has{background:rgba(46,125,70,.12);color:var(--okgreen)}
-.daychip.no{background:rgba(179,38,30,.10);color:var(--danger)}
-.scheitel-row{display:grid;grid-template-columns:74px 1fr 1fr 40px;gap:8px;margin-bottom:8px;align-items:center}
-.scheitel-row .del{padding:8px 0;color:var(--danger);font-weight:700}
-.banner{margin-top:14px;padding:14px 16px;border-radius:6px;border:2px solid var(--magenta);background:#fff}
-.banner .lbl{color:var(--magenta);margin-bottom:6px}
-.window{font-family:var(--cond);font-size:27px;font-weight:700;line-height:1.25}
-.window small{font-family:var(--mono);font-size:13.5px;font-weight:500;color:var(--muted)}
-.nowindow{font-family:var(--cond);font-size:23px;font-weight:700;color:var(--danger)}
-.error{margin-top:14px;padding:14px;border-radius:6px;border:1.5px solid var(--danger);background:#FBEDEC;color:var(--danger);font-weight:600}
-table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13px}
-th{text-align:left;padding:6px 8px;border-bottom:2px solid var(--ink);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
-td{padding:6px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}
-tr.ok{background:rgba(194,24,140,.06)}
-td.status-ok{color:var(--magenta);font-weight:600}
-td.status-no{color:var(--danger);font-weight:600}
-.foot{font-size:12.5px;color:var(--muted);margin-top:14px;line-height:1.5}
-.tablewrap{overflow-x:auto}
-svg{width:100%;height:auto;display:block}
-.reqinfo{font-family:var(--mono);font-size:12.5px;margin:12px 0 0;color:var(--muted)}
-.reqinfo strong{color:var(--ink)}
-.update-note{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;margin-top:8px}
-summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--magenta)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45;
+  padding-bottom:calc(var(--tabh) + env(safe-area-inset-bottom) + 20px);overflow-x:hidden}
+[hidden]{display:none !important}
+.wrap{max-width:780px;margin:0 auto;padding:0 14px}
+header.top{background:var(--card);border-bottom:3px solid var(--ink);padding:calc(10px + env(safe-area-inset-top)) 0 9px}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mag);font-weight:600}
+.titlerow{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+h1{font-family:var(--cond);font-weight:700;font-size:28px;margin:1px 0 0;letter-spacing:.01em}
+.net{font-family:var(--mono);font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn)}
+main{padding-top:12px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:14px;margin-top:12px}
+.card:first-child{margin-top:0}
+.card h2{font-family:var(--cond);font-size:19px;line-height:1.2;margin:0 0 10px;font-weight:700}
+.card h3{font-size:13px;margin:16px 0 6px;font-weight:700}
+.lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:4px}
+input,select,textarea,button{font:inherit;color:inherit}
+input,select,textarea{font-family:var(--mono);font-size:16px;padding:9px 10px;border:1.5px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);width:100%;min-height:44px}
+textarea{resize:vertical;line-height:1.4;min-height:130px}
+:focus-visible{outline:2.5px solid var(--mag);outline-offset:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:9px 14px;font-size:14px;font-weight:600;border-radius:6px;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--ink);text-align:center}
+.btn.pri{border-color:var(--mag);background:var(--mag);color:var(--mag-ink)}
+.btn.bad{color:var(--danger);border-color:var(--danger)}
+.btn.sm{min-height:36px;padding:5px 10px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.grow{flex:1;min-width:0}
+.hint{font-size:13px;color:var(--muted);margin:8px 0 0}
+.hint strong{color:var(--ink)}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;min-height:44px;padding:6px 4px;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--ink);line-height:1.2}
+.seg button[aria-pressed="true"]{border-color:var(--mag);background:var(--mag);color:var(--mag-ink)}
+.withbtn{display:flex;gap:6px}
+.withbtn input{flex:1;min-width:0}
+.withbtn .btn{min-width:46px;font-size:17px;padding:0}
+
+/* Datum */
+.datenav{display:grid;grid-template-columns:46px 1fr 46px auto;gap:6px;margin-top:10px}
+.datenav .btn{padding:0;font-size:20px}
+.datenav .btn.today{padding:0 12px;font-size:13px}
+.daylbl{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px}
+
+/* Ergebnis */
+.banner{margin-top:12px;padding:14px 15px;border-radius:8px;border:2px solid var(--mag);background:var(--card)}
+.banner.none{border-color:var(--danger)}
+.banner .lbl{color:var(--mag);margin-bottom:6px}
+.banner.none .lbl{color:var(--danger)}
+.win{font-family:var(--cond);font-size:30px;font-weight:700;line-height:1.18;font-variant-numeric:tabular-nums}
+.win small{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--muted);white-space:nowrap}
+.win.no{font-size:24px;color:var(--danger)}
+.nowline{margin-top:10px;padding:9px 11px;border-radius:6px;font-size:14px;font-weight:600;background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok)}
+.nowline.no{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.nowline small{display:block;font-weight:500;font-size:12px;opacity:.9;font-family:var(--mono);margin-top:2px}
+.sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+.sub strong{color:var(--ink)}
+.note{font-size:12.5px;margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn)}
+.msg{font-size:13px;margin-top:10px;padding:9px 11px;border-radius:6px;border:1px solid var(--line)}
+.msg.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}
+.msg.err{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.msg.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.msg.info{background:var(--mag-soft);border-color:var(--mag);color:var(--ink)}
+.boatrow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:13px}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper input{width:74px;text-align:center}
+.stepper .btn{min-width:44px;padding:0;font-size:20px}
+.stepper .lbl{margin:0}
+
+/* Kurve */
+svg{width:100%;height:auto;display:block;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.c-water{fill:var(--water)} .c-curve{fill:none;stroke:var(--curve);stroke-width:2.6;stroke-linejoin:round}
+.c-pred{fill:none;stroke:var(--curve);stroke-width:1.8;stroke-dasharray:5 5;opacity:.8}
+.c-meas{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linejoin:round}
+.c-watt{fill:var(--watt)} .c-sand{fill:var(--sand)} .c-wattline{stroke:var(--wattline);stroke-width:2}
+.c-grid{stroke:var(--line);stroke-width:.8} .c-skn{stroke:var(--ink);stroke-width:1;stroke-dasharray:2 4;opacity:.55}
+.c-req{stroke:var(--mag);stroke-width:2;stroke-dasharray:7 4} .c-win{fill:var(--mag);opacity:.12} .c-winl{stroke:var(--mag);stroke-width:1.4}
+.c-now{stroke:var(--ink);stroke-width:1.6} .c-cur{stroke:var(--ink);stroke-width:1.2;stroke-dasharray:3 3}
+.c-dot{fill:var(--card);stroke:var(--curve);stroke-width:2} .c-live{fill:var(--ink);stroke:var(--card);stroke-width:2}
+.t-ax{font-family:var(--mono);font-size:11px;fill:var(--muted)} .t-ev{font-family:var(--mono);font-size:11.5px;font-weight:600;fill:var(--ink)}
+.t-ev,.t-mag,.t-now{paint-order:stroke;stroke:var(--card);stroke-width:3.5px;stroke-linejoin:round}
+.t-mag{font-family:var(--mono);font-size:11.5px;font-weight:600;fill:var(--mag)} .t-now{font-family:var(--mono);font-size:11px;font-weight:700;fill:var(--ink)}
+.read{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:8px;min-height:19px}
+.read strong{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:18px;height:0;border-top:2.5px solid var(--curve);vertical-align:middle;margin-right:5px}
+.legend i.d{border-top-style:dashed} .legend i.m{border-color:var(--ink)} .legend i.r{border-color:var(--mag);border-top-style:dashed}
+
+/* Tabelle */
+.tablewrap{overflow-x:auto;margin:0 -4px}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+th{text-align:left;padding:6px 8px;border-bottom:2px solid var(--ink);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;font-weight:600}
+td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr.ok td{background:var(--mag-soft)} tr.ok td:first-child{box-shadow:inset 3px 0 0 var(--mag)}
+tr.now td{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);font-weight:700}
+td.dim{color:var(--muted)}
+table.day th,table.day td{padding-left:6px;padding-right:6px}
+table.day .chip{padding:1px 5px;font-size:10px}
+
+/* Live */
+.big{font-family:var(--cond);font-size:46px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;margin-top:12px}
+.big small{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--muted)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:5px 12px;font-family:var(--mono);font-size:13px;margin-top:10px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:600;text-align:right}
+dl{margin:0}
+
+/* Stellen */
+.spot{border:1.5px solid var(--line);border-radius:8px;padding:12px 13px;margin-top:10px;background:var(--card)}
+.spot.cur{border-color:var(--mag);border-width:2px}
+.spot-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.spot-h strong{font-family:var(--cond);font-size:20px;line-height:1.2}
+.chip{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.on{background:var(--mag);border-color:var(--mag);color:var(--mag-ink)}
+.chip.bsh{color:var(--ok);border-color:var(--ok)} .chip.man{color:var(--warn);border-color:var(--warn)}
+.spot-m{font-size:13px;color:var(--muted);margin-top:2px}
+.spot-w{font-family:var(--mono);font-size:13.5px;font-weight:600;margin-top:7px}
+.spot-w.no{color:var(--danger)}
+.evrow{display:grid;grid-template-columns:70px minmax(0,1.25fr) minmax(74px,1fr) 44px;gap:6px;margin-bottom:6px;align-items:center}
+.evrow input,.evrow select{padding-left:7px;padding-right:5px}
+.evrow .btn{padding:0;min-width:44px}
+.evsrc{grid-column:1/-1;font-family:var(--mono);font-size:11px;color:var(--muted);margin:-3px 0 4px}
+
+/* Mehr */
+details{border-top:1px solid var(--line);padding:10px 0 2px}
+details:first-of-type{border-top:0;padding-top:0}
+summary{cursor:pointer;font-weight:600;font-size:14.5px;min-height:34px;display:flex;align-items:center;color:var(--mag)}
+summary::-webkit-details-marker{color:var(--mag)}
+.prose{font-size:14px;line-height:1.55}
+.prose p{margin:0 0 9px} .prose ol,.prose ul{margin:0 0 10px;padding-left:20px} .prose li{margin-bottom:5px}
+.legal{font-size:12.5px;line-height:1.5} .legal p{margin:0 0 8px}
+.foot{font-size:12px;color:var(--muted);margin:14px 2px 0;line-height:1.5}
+
+/* Reiter */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:2px solid var(--ink);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs .in{display:flex;width:100%;max-width:780px}
+nav.tabs button{flex:1;height:var(--tabh);border:0;background:none;color:var(--muted);font-size:10.5px;font-weight:600;letter-spacing:.02em;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0}
+nav.tabs button svg{width:24px;height:24px;touch-action:auto}
+nav.tabs button[aria-current="page"]{color:var(--mag)}
+nav.tabs button[aria-current="page"] span{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:2px}
+
+#toast{position:fixed;left:12px;right:12px;bottom:calc(var(--tabh) + env(safe-area-inset-bottom) + 10px);z-index:30;display:flex;justify-content:center;pointer-events:none}
+#toast .t{pointer-events:auto;max-width:520px;background:var(--ink);color:var(--paper);border-radius:8px;padding:10px 12px;font-size:13.5px;display:flex;gap:10px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+#toast .t button{background:none;border:1.5px solid currentColor;color:inherit;border-radius:6px;padding:6px 10px;font-weight:600;cursor:pointer;white-space:nowrap}
+@media (max-width:420px){ .win{font-size:26px} .big{font-size:40px} h1{font-size:25px} }
+@media (prefers-reduced-motion:reduce){ *{scroll-behavior:auto !important;transition:none !important} }
 </style>
 </head>
 <body>
-<header><div class="wrap">
-  <div class="eyebrow">HÖHEN IN METERN ÜBER SEEKARTENNULL (SKN) · KOSINUS-NÄHERUNG</div>
-  <h1>Tidenfenster</h1>
+<header class="top"><div class="wrap">
+  <div class="eyebrow">Höhen über Seekartennull · gesetzliche Zeit</div>
+  <div class="titlerow"><h1>Tidenfenster</h1><span id="net" class="net" hidden>offline</span></div>
 </div></header>
 
-<main>
-  <section class="card" style="margin-top:0">
-    <h2>Bezugspegel und Datum</h2>
-    <div class="row3">
-      <div>
-        <label class="lbl" for="pegel">Pegel (deutsche Nordseeküste)</label>
-        <select id="pegel"></select>
-      </div>
-      <div>
-        <label class="lbl" for="datum">Datum</label>
-        <input type="date" id="datum">
-      </div>
-    </div>
-    <div class="row3" style="margin-top:10px">
-      <div>
-        <label class="lbl" for="surgeHW">Windstau zum HW (m)</label>
-        <div style="display:flex;gap:6px">
-          <input id="surgeHW" inputmode="decimal" placeholder="0,0" style="flex:1">
-          <button type="button" class="btn" id="signHW" aria-label="Vorzeichen Windstau HW wechseln" style="min-width:46px;font-size:17px">±</button>
-        </div>
-      </div>
-      <div>
-        <label class="lbl" for="surgeNW">Windstau zum NW (m)</label>
-        <div style="display:flex;gap:6px">
-          <input id="surgeNW" inputmode="decimal" placeholder="0,0" style="flex:1">
-          <button type="button" class="btn" id="signNW" aria-label="Vorzeichen Windstau NW wechseln" style="min-width:46px;font-size:17px">±</button>
-        </div>
-      </div>
-    </div>
-    <p class="hint" style="margin:8px 0 0">Getrennte Korrektur je Scheitel aus der BSH-Windstauvorhersage: + bei auflandigem Wind (höher), − bei ablandigem (niedriger). Zwischen HW und NW wird stufenlos überblendet.</p>
-    <div id="daychip"></div>
-  </section>
+<div class="wrap" id="notice"></div>
 
-  <section class="card">
-    <h2>BSH-Gezeiten eingeben</h2>
-    <details id="tidebox">
-      <summary>Gezeiten für den ganzen Monat einfügen</summary>
-      <p class="hint" style="margin-top:10px">
-        Die Monatstafel des gewählten Pegels (gezeiten.bsh.de) hier einfügen – mit Datum je Tag.
-        Die App ordnet die Hoch-/Niedrigwasser den Tagen zu; über die Datumswahl oben rufst du
-        dann jeden Tag ab. Erkannt werden u.&nbsp;a. Zeilen wie
-        <span style="font-family:var(--mono);white-space:nowrap">11.07. HW 03:12 1,1</span> oder
-        Tabellenzeilen mit mehreren Zeiten pro Tag.
-      </p>
-      <textarea id="tidata" rows="7" placeholder="11.07.2026
-HW 03:12 1,1
-NW 09:30 -0,2
-HW 15:40 1,2
-NW 21:55 -0,3
+<main class="wrap">
 
-12.07.2026
-HW 03:58 1,1
-..."></textarea>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <button type="button" class="btn primary" id="savetides">Monatsdaten speichern</button>
-        <button type="button" class="btn" id="cleartides">Alle Daten dieses Pegels löschen</button>
-      </div>
-      <div id="storestatus"></div>
-    </details>
-  </section>
-
-  <div class="grid2">
-    <section class="card" style="margin-top:0">
-      <h2>Flache Stelle</h2>
-      <label class="lbl" for="spotname">Bezeichnung</label>
-      <input id="spotname" style="margin-bottom:10px">
-      <label class="lbl">Art der Stelle</label>
-      <div class="seg" id="modeseg">
-        <button type="button" data-mode="dry">Trockenfallend</button>
-        <button type="button" data-mode="skn">Tiefe unter SKN</button>
-        <button type="button" data-mode="mhw">Tiefe bei MThw</button>
-      </div>
-      <label class="lbl" id="spotlbl" for="spotval">Watthöhe über SKN (m)</label>
-      <input id="spotval" inputmode="decimal">
-      <p class="hint" id="mhwhint" style="display:none;margin:8px 0 0"></p>
-    </section>
-
-    <section class="card" style="margin-top:0">
-      <h2>Schiff</h2>
-      <label class="lbl" for="draft">Tiefgang (m)</label>
-      <input id="draft" inputmode="decimal" style="margin-bottom:10px">
-      <label class="lbl" for="margin">Sicherheitsmarge unter dem Kiel (m)</label>
-      <input id="margin" inputmode="decimal">
-      <p class="reqinfo" id="reqinfo"></p>
-    </section>
+<!-- ============ Fenster ============ -->
+<section class="view" id="v-fenster" hidden>
+  <div class="card">
+    <label class="lbl" for="selSpot">Stelle</label>
+    <select id="selSpot" data-bind="cur"></select>
+    <div class="datenav" data-datenav></div>
   </div>
 
-  <section class="card">
-    <h2>Live-Pegel (nur mit Internet)</h2>
-    <details id="livebox">
-      <summary>Aktuellen Messwert abrufen</summary>
-      <p class="hint" style="margin-top:10px">
-        Holt den aktuellen Rohmesswert des Pegels von PEGELONLINE (WSV) und rechnet ihn auf SKN um.
-        Der Live-Wert enthält den heutigen Windstau bereits.
-      </p>
-      <div class="row3">
-        <div>
-          <label class="lbl" for="postation">PEGELONLINE-Station</label>
-          <input id="postation">
-        </div>
-        <div>
-          <label class="lbl" for="posknpnp">SKN über Pegelnull (cm)</label>
-          <input id="posknpnp" inputmode="decimal" placeholder="z.B. 288">
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button type="button" class="btn primary" id="livefetch">Live-Pegel abrufen</button>
-      </div>
-      <div id="livestatus"></div>
-    </details>
-  </section>
+  <div id="fBanner"></div>
 
-  <section class="card">
-    <h2>Kalibrierung durch eigene Peilungen</h2>
-    <details id="calibbox">
-      <summary>Peilungen erfassen und Watthöhe ermitteln</summary>
-      <p class="hint" style="margin-top:10px">
-        Jede eigene Lotung ergibt eine Watthöhe: <em>Wasserstand über SKN − gemessene Wassertiefe</em>.
-        Mehrere Peilungen zu verschiedenen Tidenphasen zeigen über ihre Streuung, wie gut die Stelle
-        an den Pegel gekoppelt ist – das ist die gesuchte Abweichung.
-      </p>
-      <div class="row3">
-        <div>
-          <label class="lbl" for="calibPegel">Wasserstand ü. SKN (m)</label>
-          <input id="calibPegel" inputmode="decimal" placeholder="z.B. 3,60">
-        </div>
-        <div>
-          <label class="lbl" for="calibDepth">gemessene Wassertiefe (m)</label>
-          <input id="calibDepth" inputmode="decimal" placeholder="z.B. 1,80">
-        </div>
-        <div>
-          <label class="lbl" for="calibNote">Notiz (Datum/Phase)</label>
-          <input id="calibNote" placeholder="11.08. HW−0:35">
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button type="button" class="btn primary" id="calibAdd">Peilung hinzufügen</button>
-        <button type="button" class="btn" id="calibApply">Mittelwert als Watthöhe übernehmen</button>
-      </div>
-      <div id="calibList"></div>
-    </details>
-  </section>
-
-  <section class="card">
-    <h2>Gezeiten-Scheitel des gewählten Tages</h2>
-    <p class="hint">Automatisch aus den gespeicherten Monatsdaten geladen – jederzeit überschreibbar. Höhen über SKN.</p>
-    <div id="rows"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button type="button" class="btn" id="addrow">+ Scheitel hinzufügen</button>
-      <button type="button" class="btn" id="fillmeans">Mittlere Höhen einsetzen</button>
+  <div class="card">
+    <div class="boatrow">
+      <span id="fDraft"></span>
+      <span class="stepper">
+        <span class="lbl">Marge (m)</span>
+        <button type="button" class="btn" data-act="margin" data-d="-0.1" aria-label="Sicherheitsmarge verringern">−</button>
+        <input id="inpMargin" data-bind="boat.margin" inputmode="decimal" aria-label="Sicherheitsmarge unter dem Kiel in Metern">
+        <button type="button" class="btn" data-act="margin" data-d="0.1" aria-label="Sicherheitsmarge erhöhen">+</button>
+      </span>
     </div>
-  </section>
+  </div>
 
-  <div id="result"></div>
+  <div class="card">
+    <h2>Abweichung durch Wind</h2>
+    <div class="seg" id="fSurgeSeg" role="group" aria-label="Abweichung durch Wind">
+      <button type="button" data-act="surge-m" data-m="off">Keine</button>
+      <button type="button" data-act="surge-m" data-m="bsh">BSH-Vorhersage</button>
+      <button type="button" data-act="surge-m" data-m="man">Eigener Wert</button>
+    </div>
+    <div id="fSurgeMan" hidden>
+      <div style="margin-top:10px">
+        <label class="lbl" for="selSurgeRef">Der Wert bezieht sich auf</label>
+        <select id="selSurgeRef" data-bind="surge.ref">
+          <option value="zus">die Vorausberechnung des Tages (Zuschlag)</option>
+          <option value="mit">das mittlere Hoch-/Niedrigwasser (BSH-Angabe)</option>
+        </select>
+      </div>
+      <div class="grid" style="margin-top:10px">
+        <div><label class="lbl" for="inpSurgeHW">zum Hochwasser (m)</label>
+          <div class="withbtn"><input id="inpSurgeHW" data-bind="surge.hw" inputmode="decimal" placeholder="0,0"><button type="button" class="btn" data-act="sign" data-f="hw" aria-label="Vorzeichen zum Hochwasser wechseln">±</button></div></div>
+        <div><label class="lbl" for="inpSurgeNW">zum Niedrigwasser (m)</label>
+          <div class="withbtn"><input id="inpSurgeNW" data-bind="surge.nw" inputmode="decimal" placeholder="0,0"><button type="button" class="btn" data-act="sign" data-f="nw" aria-label="Vorzeichen zum Niedrigwasser wechseln">±</button></div></div>
+      </div>
+    </div>
+    <div id="fSurgeInfo"></div>
+  </div>
 
-  <section class="card">
+  <div class="card">
+    <h2>Tidekurve über der Stelle</h2>
+    <div id="fChart"></div>
+    <div id="fRead" class="read"></div>
+  </div>
+
+  <div class="card">
+    <h2>Wasserstand über den Tag</h2>
+    <div id="fTable" class="tablewrap"></div>
+  </div>
+
+  <p class="foot">Rechenhilfe für die Törnplanung, keine amtliche Navigationsunterlage. Der Verlauf zwischen den Scheiteln ist eine Näherung; über dem Watt kann das Wasser anders laufen als am Pegel. Vollständiger Hinweis unter „Mehr“.</p>
+</section>
+
+<!-- ============ Live ============ -->
+<section class="view" id="v-live" hidden>
+  <div class="card">
+    <label class="lbl" for="selLive">Pegel</label>
+    <select id="selLive" data-bind="liveGauge"></select>
+    <div id="lMain"></div>
+    <div class="row"><button type="button" class="btn" data-act="live-refresh">Aktualisieren</button></div>
+  </div>
+  <div class="card" id="lSpotCard" hidden>
+    <h2 id="lSpotH"></h2>
+    <div id="lSpot"></div>
+  </div>
+  <div class="card" id="lChartCard" hidden>
+    <h2>Verlauf: gemessen und vorausberechnet</h2>
+    <div id="lChart"></div>
+    <div class="legend"><span><i class="m"></i>gemessen</span><span><i class="d"></i>vorausberechnet</span><span id="lLegReq" hidden><i class="r"></i>nötig für die Stelle</span></div>
+  </div>
+  <div class="card" id="lPeilCard" hidden>
+    <h2>Peilung festhalten</h2>
+    <p class="hint" style="margin-top:0">Über der flachsten Stelle die Echolot-Anzeige eintragen. Zusammen mit dem Messwert des Pegels ergibt das die Höhe des Grundes.</p>
+    <div class="grid" style="margin-top:10px">
+      <div><label class="lbl" for="inpLiveDisp">Echolot-Anzeige (m)</label><input id="inpLiveDisp" inputmode="decimal" placeholder="z. B. 0,5"></div>
+      <div><label class="lbl" for="inpLiveNote">Notiz</label><input id="inpLiveNote" placeholder="optional"></div>
+    </div>
+    <div class="row"><button type="button" class="btn pri" data-act="peil-live">Peilung speichern</button></div>
+    <div id="lPeilMsg"></div>
+  </div>
+  <p class="foot">Messwerte: ungeprüfte Rohdaten von PEGELONLINE (WSV), umgerechnet auf Seekartennull.</p>
+</section>
+
+<!-- ============ Stellen ============ -->
+<section class="view" id="v-stellen" hidden>
+  <div id="sList"></div>
+  <div id="sEdit" hidden></div>
+</section>
+
+<!-- ============ Gezeiten ============ -->
+<section class="view" id="v-gezeiten" hidden>
+  <div class="card">
+    <div id="gHead"></div>
+    <div class="datenav" data-datenav></div>
+  </div>
+  <div class="card">
+    <h2>Hoch- und Niedrigwasser des Tages</h2>
+    <div id="gRows"></div>
+  </div>
+  <div class="card">
+    <h2>Automatische Daten vom BSH</h2>
+    <div id="gBsh"></div>
+  </div>
+  <div class="card">
+    <h2>Monatstafel einfügen</h2>
+    <p class="hint" style="margin-top:0">Für Tage, die weiter als etwa sechs Tage voraus liegen. Auf gezeiten.bsh.de den Pegel wählen, die Tabelle markieren, kopieren und hier einfügen. Dort müssen <strong>Seekartennull (SKN)</strong> und <strong>gesetzliche Zeit</strong> eingestellt sein.</p>
+    <textarea id="gPaste" style="margin-top:10px" aria-label="Kopierte Gezeitentafel" placeholder="Mi., 11.11.2026  00:44  3,74  HW
+07:14  0,60  NW
+13:03  3,72  HW
+19:26  0,68  NW
+Do., 12.11.2026  01:15  3,76  HW
+…"></textarea>
+    <div class="row">
+      <button type="button" class="btn pri" data-act="paste-save">Tafel speichern</button>
+      <button type="button" class="btn" data-act="paste-clear">Eingefügte Tafeln dieses Pegels löschen</button>
+    </div>
+    <div id="gPasteMsg"></div>
+  </div>
+</section>
+
+<!-- ============ Mehr ============ -->
+<section class="view" id="v-mehr" hidden>
+  <div class="card">
+    <h2>Schiff</h2>
+    <div class="grid">
+      <div><label class="lbl" for="inpDraft">Tiefgang (m)</label><input id="inpDraft" data-bind="boat.draft" inputmode="decimal"></div>
+      <div><label class="lbl" for="inpMargin2">Sicherheitsmarge (m)</label><input id="inpMargin2" data-bind="boat.margin" inputmode="decimal"></div>
+      <div><label class="lbl" for="inpEcho">Echolot-Zuschlag (m)</label><input id="inpEcho" data-bind="boat.echo" inputmode="decimal"></div>
+    </div>
+    <p class="hint" id="mEchoHint"></p>
+  </div>
+
+  <div class="card">
+    <h2>Darstellung</h2>
+    <div class="seg" id="mTheme" role="group" aria-label="Darstellung">
+      <button type="button" data-act="theme" data-t="auto">Wie das Gerät</button>
+      <button type="button" data-act="theme" data-t="light">Hell</button>
+      <button type="button" data-act="theme" data-t="dark">Dunkel</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Datensicherung</h2>
+    <p class="hint" style="margin-top:0">Stellen, Peilungen, eingefügte Tafeln und Einstellungen liegen nur auf diesem Gerät. Eine Sicherungsdatei schützt davor, sie zu verlieren, und bringt sie auf ein zweites Gerät.</p>
+    <div class="row">
+      <button type="button" class="btn" data-act="export">Sicherung speichern</button>
+      <button type="button" class="btn" data-act="import">Sicherung einspielen</button>
+      <input type="file" id="fileImport" accept="application/json,.json" hidden>
+    </div>
+    <div id="mBackupMsg"></div>
+  </div>
+
+  <div class="card">
     <details>
-      <summary>Hilfe &amp; Anleitung</summary>
-      <div style="margin-top:10px;font-size:14px;line-height:1.55">
-        <p style="margin:0 0 10px"><strong>Was die App macht:</strong> Sie ermittelt, in welchem Zeitraum eine flache Stelle
-        (Wattenhoch, Barre, Priel) für dein Schiff tief genug ist, und zeigt den Wasserstand im Tagesverlauf.</p>
-
-        <p style="margin:0 0 4px"><strong>Schritt für Schritt:</strong></p>
-        <ol style="margin:0 0 10px;padding-left:20px">
-          <li style="margin-bottom:5px"><strong>Pegel &amp; Datum</strong> oben wählen.</li>
-          <li style="margin-bottom:5px"><strong>BSH-Gezeiten</strong> aufklappen, die Monatstafel des Pegels (z.&nbsp;B. von gezeiten.bsh.de) einfügen und „Monatsdaten speichern". Danach lädt jeder gewählte Tag automatisch seine Hoch-/Niedrigwasser.</li>
-          <li style="margin-bottom:5px"><strong>Windstau</strong> getrennt für HW und NW aus der BSH-Vorhersage eintragen (über den ±-Knopf auch negativ für ablandigen Wind).</li>
-          <li style="margin-bottom:5px"><strong>Flache Stelle</strong> festlegen: trockenfallend (Höhe über SKN), Tiefe unter SKN oder Tiefe bei MThw – je nachdem, wie deine Quelle es angibt.</li>
-          <li style="margin-bottom:5px"><strong>Schiff</strong>: Tiefgang und gewünschte Sicherheitsmarge unter dem Kiel.</li>
+      <summary>Anleitung</summary>
+      <div class="prose" style="margin-top:8px">
+        <p><strong>Wozu:</strong> Die App zeigt, wann eine flache Stelle – ein Wattenhoch, eine Barre, ein Priel – für dein Schiff tief genug ist, und wie viel Wasser zu jeder Uhrzeit dort steht.</p>
+        <p><strong>Einmal einrichten</strong></p>
+        <ol>
+          <li>Unter <strong>Mehr</strong> den Tiefgang und die übliche Sicherheitsmarge eintragen.</li>
+          <li>Unter <strong>Stellen</strong> jede flache Stelle anlegen: Name, Bezugspegel und Höhe. Die Höhe gibt es in drei Schreibweisen – fällt trocken (Höhe über SKN), Kartentiefe unter SKN oder Wassertiefe bei mittlerem Hochwasser.</li>
         </ol>
-
-        <p style="margin:0 0 4px"><strong>Ergebnis lesen:</strong></p>
-        <ul style="margin:0 0 10px;padding-left:20px">
-          <li style="margin-bottom:5px">Das <strong>magentafarbene Band</strong> nennt das befahrbare Zeitfenster mit Dauer.</li>
-          <li style="margin-bottom:5px">In der <strong>Tidekurve</strong> ist die gestrichelte Linie „Tiefgang + Marge" die nötige Wasserhöhe; oberhalb davon ist die Stelle passierbar.</li>
-          <li style="margin-bottom:5px">Die <strong>Halbstundentabelle</strong> zeigt Tidenhöhe, Wassertiefe an der Stelle und das Wasser unter dem Kiel; befahrbare Zeilen sind hervorgehoben.</li>
+        <p><strong>Planen</strong></p>
+        <ol>
+          <li>Unter <strong>Fenster</strong> Stelle und Tag wählen. Die Zeiten, in denen du hinüberkommst, stehen oben.</li>
+          <li>Die Gezeiten der nächsten rund sechs Tage holt die App selbst vom BSH. Für spätere Tage unter <strong>Gezeiten</strong> die Monatstafel einfügen.</li>
+          <li>Die Marge lässt sich direkt unter dem Ergebnis verstellen, zum Beispiel mit Kindern an Bord.</li>
+          <li>Kurve antippen, um den Wasserstand zu einer Uhrzeit abzulesen.</li>
+        </ol>
+        <p><strong>Abweichung durch Wind</strong></p>
+        <ul>
+          <li><strong>BSH-Vorhersage:</strong> Liegt für ein Hoch- oder Niedrigwasser eine Vorhersage des BSH vor (etwa 24 Stunden voraus), rechnet die App mit dieser Höhe statt mit dem Gezeitenkalender. Sagt das BSH weniger Wasser voraus, wird das vorsichtshalber auch für die folgenden Scheitel angenommen.</li>
+          <li><strong>Eigener Wert:</strong> entweder als Zuschlag auf die Vorausberechnung oder so, wie das BSH es ansagt – als Abweichung vom <em>mittleren</em> Hoch- oder Niedrigwasser. Das ist nicht dasselbe: An einem Springtag liegt das Hochwasser auch ohne Wind über dem mittleren.</li>
         </ul>
-
-        <p style="margin:0 0 10px"><strong>Speicherung:</strong> Alle Eingaben und die Monatsdaten bleiben lokal auf deinem Gerät erhalten – auch offline. Es werden keine Daten übertragen.</p>
-
-        <p style="margin:0"><strong>Wichtig zur Genauigkeit:</strong> Zwischen den Scheiteln wird mit einer Kosinus-Näherung gerechnet; MThw/MTnw sind Mittelwerte. Im Wattenmeer kann die reale Kurve abweichen. Ergebnisse immer mit amtlichen Unterlagen abgleichen.</p>
+        <p><strong>Unterwegs</strong></p>
+        <ul>
+          <li><strong>Live</strong> zeigt den gemessenen Pegel, die Tendenz und was das für die Stelle jetzt bedeutet. Das braucht Netz.</li>
+          <li><strong>Peilung festhalten:</strong> Über dem Wattenhoch die Echolot-Anzeige eintragen. Aus Messwert und Wassertiefe errechnet die App die Höhe des Grundes. Mehrere Peilungen zeigen über ihre Streuung, wie gut die Stelle dem Pegel folgt.</li>
+        </ul>
+        <p><strong>Bezugspegel:</strong> Maßgeblich ist der Pegel hinter dem Watt, nicht der seeseitige. Am Wattenhoch tritt das Hochwasser am spätesten ein.</p>
+        <p><strong>Verlauf zwischen den Scheiteln:</strong> Die Tide steigt und fällt nicht gleichmäßig. Die App nimmt deshalb die Kurvenform des jeweiligen Pegels – aus der vorausberechneten Kurve des BSH oder, wo es die nicht gibt, aus den Messwerten der letzten acht Tage. Nur wenn beides fehlt, rechnet sie mit einer Kosinuskurve und sagt das beim Ergebnis dazu.</p>
+        <p><strong>Ohne Netz:</strong> Alles Gerechnete funktioniert offline mit den zuletzt geladenen oder eingefügten Gezeiten. Live-Pegel und neue BSH-Daten gibt es nur mit Verbindung.</p>
       </div>
     </details>
-  </section>
-
-  <div class="foot">
-    <p style="margin:0 0 8px"><strong>Wichtiger Hinweis:</strong> Diese Anwendung ist ein unverbindliches, privat und unentgeltlich erstelltes Hilfsmittel zur groben Törnplanung und <strong>keine amtliche Quelle für die Navigation</strong>.</p>
     <details>
-      <summary style="font-size:13px">Haftungsausschluss &amp; rechtliche Hinweise</summary>
-      <div style="margin-top:8px;font-size:12.5px;line-height:1.5">
-        <p style="margin:0 0 8px"><strong>Keine Gewähr.</strong> Die Anwendung wird ohne jede Gewähr und „wie besehen" bereitgestellt. Sie berechnet Tidenfenster mit vereinfachten Näherungsverfahren (Kosinus-Interpolation zwischen den Gezeitenscheiteln) auf Grundlage manuell eingegebener oder eingefügter Daten sowie hinterlegter Mittelwerte (z.&nbsp;B. MThw, MTnw). Alle Ergebnisse sind unverbindliche Schätzwerte.</p>
-        <p style="margin:0 0 8px"><strong>Abweichungen.</strong> Tatsächliche Wasserstände und Eintrittszeiten können – etwa durch Wind, Luftdruck, Oberwasser, Seegang, lokale Gegebenheiten, veraltete oder fehlerhafte Eingaben – erheblich von den angezeigten Werten abweichen.</p>
-        <p style="margin:0 0 8px"><strong>Keine amtliche Quelle.</strong> Die App ersetzt nicht amtliche Seekarten, die Gezeiten-, Wasserstands- und Sturmflutvorhersagen sowie Gezeitentafeln des BSH, aktuelle Wetter- und Warnmeldungen, nautische Veröffentlichungen und die eigene, sorgfältige Navigation. Maßgeblich sind ausschließlich die amtlichen Unterlagen.</p>
-        <p style="margin:0 0 8px"><strong>Eigenverantwortung.</strong> Die Nutzung erfolgt ausschließlich auf eigene Gefahr und in eigener Verantwortung. Für die Sicherheit von Schiff, Besatzung und Dritten ist allein die Schiffsführerin oder der Schiffsführer verantwortlich. Jede Eingabe und jedes Ergebnis ist eigenständig anhand amtlicher Quellen zu überprüfen.</p>
-        <p style="margin:0 0 8px"><strong>Haftung.</strong> Eine Haftung des Erstellers sowie etwaiger weitergebender Personen für Schäden aus der Nutzung oder Nichtnutzbarkeit der Anwendung oder aus fehlerhaften, unvollständigen oder veralteten Berechnungen, Daten oder Funktionen ist – soweit gesetzlich zulässig – ausgeschlossen. Zwingende gesetzliche Haftung bleibt unberührt, insbesondere bei Vorsatz und grober Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit.</p>
-        <p style="margin:0 0 8px"><strong>Weitergabe.</strong> Eine Weitergabe der Anwendung an Dritte ist nicht gestattet.</p>
-        <p style="margin:0"><strong>Keine Zusicherung.</strong> Es wird keine Gewähr für Verfügbarkeit, Fehlerfreiheit, Aktualität oder Eignung für einen bestimmten Zweck übernommen.</p>
+      <summary>Datenquellen</summary>
+      <div class="prose" style="margin-top:8px">
+        <p><strong>Gezeitenvorausberechnung und Wasserstandsvorhersage:</strong> © Bundesamt für Seeschifffahrt und Hydrographie (BSH), Water Level Forecast API, Lizenz <a href="https://creativecommons.org/licenses/by/4.0/legalcode.de" target="_blank" rel="noopener">CC BY 4.0</a>. Die Höhen wurden von Pegelnull auf Seekartennull umgerechnet. Das BSH übernimmt für die Angaben keine Gewähr.</p>
+        <p><strong>Live-Pegel:</strong> ungeprüfte Rohdaten, © www.pegelonline.wsv.de (Wasserstraßen- und Schifffahrtsverwaltung des Bundes), Datenlizenz Deutschland – Zero – 2.0. Es können Fehlwerte und Lücken auftreten.</p>
+        <p>Die App überträgt keine deiner Eingaben. Abgerufen werden nur die Daten des gewählten Pegels.</p>
       </div>
     </details>
-    <span class="update-note" style="display:block">Eingaben werden lokal auf diesem Gerät gespeichert · v1.9</span>
+    <details>
+      <summary>Haftungsausschluss und rechtliche Hinweise</summary>
+      <div class="legal" style="margin-top:8px">
+        <p><strong>Keine Gewähr.</strong> Die Anwendung ist ein privat und unentgeltlich erstelltes Hilfsmittel zur groben Törnplanung und wird ohne jede Gewähr und „wie besehen“ bereitgestellt. Sie berechnet Tidenfenster mit einem vereinfachten Näherungsverfahren (Interpolation zwischen den Gezeitenscheiteln mit einer gemittelten Kurvenform oder einer Kosinuskurve) auf Grundlage eingegebener, eingefügter oder automatisch abgerufener Daten. Alle Ergebnisse sind unverbindliche Schätzwerte.</p>
+        <p><strong>Abgerufene Daten.</strong> Automatisch geladene Vorausberechnungen, Vorhersagen und Messwerte stammen von Dritten (BSH, WSV). Sie können fehlen, verspätet, veraltet oder fehlerhaft sein; Messwerte sind ungeprüfte Rohdaten. Eine Prüfung durch die Anwendung findet nur sehr eingeschränkt statt.</p>
+        <p><strong>Abweichungen.</strong> Tatsächliche Wasserstände und Eintrittszeiten können – etwa durch Wind, Luftdruck, Oberwasser, Seegang, örtliche Gegebenheiten, veränderte Wattgründe, veraltete oder fehlerhafte Eingaben – erheblich von den angezeigten Werten abweichen.</p>
+        <p><strong>Keine amtliche Quelle.</strong> Die App ersetzt nicht amtliche Seekarten, die Gezeiten-, Wasserstands- und Sturmflutvorhersagen sowie Gezeitentafeln des BSH, aktuelle Wetter- und Warnmeldungen, nautische Veröffentlichungen und die eigene, sorgfältige Navigation. Maßgeblich sind ausschließlich die amtlichen Unterlagen.</p>
+        <p><strong>Eigenverantwortung.</strong> Die Nutzung erfolgt ausschließlich auf eigene Gefahr und in eigener Verantwortung. Für die Sicherheit von Schiff, Besatzung und Dritten ist allein die Schiffsführerin oder der Schiffsführer verantwortlich. Jede Eingabe und jedes Ergebnis ist eigenständig anhand amtlicher Quellen zu überprüfen.</p>
+        <p><strong>Haftung.</strong> Eine Haftung des Erstellers sowie etwaiger weitergebender Personen für Schäden aus der Nutzung oder Nichtnutzbarkeit der Anwendung oder aus fehlerhaften, unvollständigen oder veralteten Berechnungen, Daten oder Funktionen ist – soweit gesetzlich zulässig – ausgeschlossen. Zwingende gesetzliche Haftung bleibt unberührt, insbesondere bei Vorsatz und grober Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit.</p>
+        <p><strong>Weitergabe.</strong> Eine Weitergabe der Anwendung an Dritte ist nicht gestattet.</p>
+        <p><strong>Keine Zusicherung.</strong> Es wird keine Gewähr für Verfügbarkeit, Fehlerfreiheit, Aktualität oder Eignung für einen bestimmten Zweck übernommen.</p>
+      </div>
+    </details>
   </div>
+
+  <div class="card">
+    <div class="boatrow"><span id="mVersion"></span><button type="button" class="btn sm" data-act="reload">Neu laden</button></div>
+  </div>
+</section>
+
 </main>
+
+<nav class="tabs" aria-label="Bereiche"><div class="in">
+  <button type="button" data-act="tab" data-tab="fenster"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 16c3 0 3.5-9 7-9s3.5 9 7 9 3.5-5 6-5"/><path d="M2 20h20" stroke-dasharray="2 3"/></svg><span>Fenster</span></button>
+  <button type="button" data-act="tab" data-tab="live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8"/></svg><span>Live</span></button>
+  <button type="button" data-act="tab" data-tab="stellen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.500C5 14.800 12 21 12 21z"/><circle cx="12" cy="9.500" r="2.300"/></svg><span>Stellen</span></button>
+  <button type="button" data-act="tab" data-tab="gezeiten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.500" y="4.500" width="17" height="16" rx="2"/><path d="M3.500 9.500h17M8 3v3M16 3v3M7.500 13.500h3M13.500 13.500h3M7.500 17h3"/></svg><span>Gezeiten</span></button>
+  <button type="button" data-act="tab" data-tab="mehr"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>Mehr</span></button>
+</div></nav>
+
+<div id="toast"></div>
 
 <script>
 "use strict";
-// ---------- Pegel (MHW/MNW über SKN, Näherungswerte als Komfortfunktion) ----------
-const PEGEL=[
- // po = Stationsname bei PEGELONLINE (WSV); sknPnp = Seekartennull über Pegelnullpunkt in cm
- // sknPnp nur gesetzt, wo aus der GDWS-Aufstellung belegt (Stand Dez. 2025 für 2026); sonst null
- {name:"Emden, Neue Seeschleuse",mhw:3.5,mnw:0.4,po:"EMDEN NEUE SEESCHLEUSE",sknPnp:null},
- {name:"Borkum, Fischerbalje",mhw:2.8,mnw:0.4,po:"BORKUM FISCHERBALJE",sknPnp:null},
- {name:"Juist",mhw:2.8,mnw:0.4,po:"JUIST",sknPnp:null},
- {name:"Norderney, Riffgat",mhw:2.9,mnw:0.4,po:"NORDERNEY RIFFGAT",sknPnp:null},
- {name:"Baltrum",mhw:3.0,mnw:0.4,po:"BALTRUM",sknPnp:null},
- {name:"Langeoog",mhw:3.1,mnw:0.4,po:"LANGEOOG",sknPnp:null},
- {name:"Spiekeroog",mhw:3.2,mnw:0.4,po:"SPIEKEROOG",sknPnp:314},
- {name:"Wangerooge, West",mhw:3.3,mnw:0.4,po:"WANGEROOGE WEST",sknPnp:297},
- {name:"Wangerooge, Ost",mhw:3.4,mnw:0.5,po:"WANGEROOGE OST",sknPnp:288},
- {name:"Wangerooge, Langes Riff (Nord)",mhw:3.2,mnw:0.5,po:"WANGEROOGE NORD",sknPnp:296},
- {name:"Minsener Oog",mhw:3.6,mnw:0.5,po:"MINSENER OOG",sknPnp:null},
- {name:"Schillig",mhw:3.9,mnw:0.5,po:"SCHILLIG",sknPnp:266},
- {name:"Hooksielplate",mhw:4.0,mnw:0.5,po:"HOOKSIELPLATE",sknPnp:255},
- {name:"Hooksiel, Außenhafen",mhw:4.2,mnw:0.6,po:"HOOKSIEL",sknPnp:null},
- {name:"Wilhelmshaven, Alter Vorhafen",mhw:4.3,mnw:0.6,po:"WILHELMSHAVEN ALTER VORHAFEN",sknPnp:null},
- {name:"Bremerhaven, Alter Leuchtturm",mhw:4.2,mnw:0.5,po:"BREMERHAVEN ALTER LEUCHTTURM",sknPnp:null},
- {name:"Helgoland, Binnenhafen",mhw:2.7,mnw:0.4,po:"HELGOLAND BINNENHAFEN",sknPnp:null},
- {name:"Cuxhaven, Steubenhöft",mhw:3.4,mnw:0.4,po:"CUXHAVEN STEUBENHÖFT",sknPnp:null},
- {name:"Büsum",mhw:3.7,mnw:0.4,po:"BÜSUM",sknPnp:null},
- {name:"Husum",mhw:3.9,mnw:0.3,po:"HUSUM",sknPnp:null},
- {name:"Wittdün, Amrum",mhw:3.0,mnw:0.4,po:"WITTDÜN",sknPnp:null},
- {name:"Dagebüll",mhw:3.3,mnw:0.4,po:"DAGEBÜLL",sknPnp:null},
- {name:"List auf Sylt",mhw:2.2,mnw:0.4,po:"LIST",sknPnp:null},
+(function () {
+/* ================= KERN: Rechnen, Zeit, Daten (ohne Oberfläche) ================= */
+const VERSION = "2.0";
+const MIN = 60000, HOUR = 3600000;
+
+// ---------- Pegel ----------
+// [id, BSH-Schnittstelle, Name, Region, PEGELONLINE-UUID, SKN über PNP (cm), MThw (cm ü. PNP), MTnw (cm ü. PNP)]
+// Kennwerte: BSH, Stand 2026. Sie werden bei jedem BSH-Abruf durch die aktuellen Werte ersetzt.
+const GAUGE_ROWS = [
+  ["101P","borkum_fischerbalje","Borkum, Fischerbalje","Ems","8727ebfd-e2e1-43da-ab3d-fee48cff9acc",322,620,383],
+  ["796C","leyhoern_leybucht","Leyhörn, Leybucht","Ems",null,315,638,378],
+  ["802P","knock","Knock, Ems","Ems","438b565e-f293-43c8-8771-377e555ed5ec",285,655,347],
+  ["507P","emden_grosse_seeschleuse","Emden, Große Seeschleuse","Ems","edfdf747-be92-462f-87ed-53d228a33172",262,651,322],
+  ["111P","norderney_riffgat","Norderney, Riffgat","Ostfriesland","c0244c0e-6ae6-40cb-a967-4039b2a0ce7c",316,626,383],
+  ["781P","langeoog_hafeneinfahrt","Langeoog, Hafeneinfahrt","Ostfriesland","a0c1dcb6-7812-48e6-8c01-f7edad7a2caf",317,643,377],
+  ["782P","bensersiel","Bensersiel","Ostfriesland",null,305,647,370],
+  ["779P","spiekeroog","Spiekeroog","Ostfriesland","662c4b5e-0241-456d-ac7d-9f62fd95c0d1",314,653,379],
+  ["778P","harlesiel","Harlesiel, Hafen","Ostfriesland",null,299,650,388],
+  ["777P","wangerooge_hafen","Wangerooge, Hafen (West)","Ostfriesland","70039212-c8a8-43fc-82a5-150d95831772",297,653,372],
+  ["754P","wangerooge_nord","Wangerooge, Langes Riff (Nord)","Ostfriesland","c41d42b1-5b0d-47c9-ba53-d58d3d109b64",296,645,362],
+  ["756P","wangerooge_ost","Wangerooge, Ost","Ostfriesland","26656fda-cacf-4e92-9935-3ae6e717fe5b",288,648,354],
+  ["761P","schillig","Schillig","Jade","b1cda5a0-115f-4976-a0a6-9d427ff6dceb",266,663,340],
+  ["764B","hooksielplate","Hooksielplate","Jade","fac30fe9-a39c-445a-84de-637a199f1dfa",255,667,333],
+  ["768P","jade-weser-port","Jade-Weser-Port","Jade","33bdec83-6184-4ca5-a075-f44185aef302",256,673,322],
+  ["770P","wilhelmshaven_neuer_vorhafen_seeschleuse","Wilhelmshaven, Neuer Vorhafen","Jade","f77317d9-654f-4f51-925e-004c592049da",238,680,311],
+  ["512P","wilhelmshaven_alter_vorhafen","Wilhelmshaven, Alter Vorhafen","Jade","f85bd17b-06c7-49bd-8bfc-ee2bf3ffea99",240,691,313],
+  ["734P","alte_weser_leuchtturm","Alte Weser, Leuchtturm","Weser","c6772c3c-a6bb-4728-9250-a408ab3856bd",287,641,358],
+  ["737P","dwarsgat","Dwarsgat","Weser","ad3b53f8-8c1b-439f-a0df-9f24827026d5",256,662,328],
+  ["103P","bremerhaven_alter_leuchtturm","Bremerhaven, Alter Leuchtturm","Weser","d3f822a0-e201-4a61-8913-589c74818ae0",236,688,312],
+  ["677C","scharhoernriff_bake_a","Scharhörnriff, Bake A","Elbmündung","e8daa3e2-77d1-4cfa-9ac9-501e7b2b4b0a",296,652,359],
+  ["677P","scharhoern_bake_c","Scharhörn, Bake C","Elbmündung","f0197bcf-6846-4c0a-9659-0c2626a9bcf0",284,654,353],
+  ["506P","cuxhaven_steubenhoeft","Cuxhaven, Steubenhöft","Elbmündung","aad49293-242a-43ad-a8b1-e91d7792c4b2",302,656,366],
+  ["681P","otterndorf","Otterndorf","Elbmündung","5140295e-b93e-4081-a920-642d89c7ca8b",305,652,376],
+  ["504B","brunsbuettel_ost","Brunsbüttel","Elbmündung","d4f5f719-8c52-4f8d-945d-1c31404cc628",310,652,369],
+  ["509A","helgoland_binnenhafen","Helgoland, Binnenhafen","Helgoland","c0ec139b-13b4-4f86-bee3-06665ad81a40",320,619,385],
+  ["667B","meldorf_sperrwerk_aussenpegel","Meldorf, Sperrwerk","Dithmarschen",null,282,667,347],
+  ["505P","buesum_schleuse","Büsum","Dithmarschen","5287a3e1-c540-4ab1-b52e-880d124cbc43",280,661,348],
+  ["664P","eider-sperrwerk_aussenpegel","Eider-Sperrwerk, Außenpegel","Dithmarschen","04acd7e5-3cbc-4cdd-b4a9-f452e868f4d6",300,647,352],
+  ["645P","suederoogsand","Süderoogsand","Nordfriesland",null,285,636,351],
+  ["647A","pellworm_anleger","Pellworm, Anleger","Nordfriesland","2852b9ab-d30e-4d04-ae06-3e946f48a0b1",263,656,336],
+  ["642E","pellworm_hoogerfaehre","Pellworm, Hoogerfähre","Nordfriesland",null,288,648,383],
+  ["649P","strucklahnungshoern","Strucklahnungshörn, Nordstrand","Nordfriesland",null,260,664,334],
+  ["510P","husum_schleuse","Husum","Nordfriesland","e114aeec-c8d9-4d20-8fe1-8822058cb38b",254,672,324],
+  ["636F","hooge_anleger","Hooge, Anleger","Nordfriesland",null,289,645,359],
+  ["637A","der_strand_hamburger_hallig","Hamburger Hallig","Nordfriesland",null,262,658,323],
+  ["631P","wittduen_hafen","Wittdün, Amrum","Nordfriesland","9c4c11f2-0548-4555-beac-ecfd36f9bd74",300,630,366],
+  ["622P","amrum_odde","Amrum Odde","Nordfriesland",null,343,605,396],
+  ["632P","wyk","Wyk, Föhr","Nordfriesland",null,288,645,358],
+  ["638P","schluettsiel","Schlüttsiel","Nordfriesland",null,273,666,350],
+  ["635P","dagebuell","Dagebüll","Nordfriesland","6233e901-2600-4b54-ae06-7b987934e99e",273,643,343],
+  ["629B","foehrer_ley_nord","Föhrer Ley, Nord","Nordfriesland",null,326,629,387],
+  ["628A","osterley","Osterley","Nordfriesland",null,325,632,381],
+  ["624P","hoernum_hafen","Hörnum, Sylt","Nordfriesland","733755fd-628f-4130-a694-aaba340531ba",343,606,403],
+  ["620P","westerland","Westerland, Sylt","Nordfriesland",null,351,594,413],
+  ["618P","munkmarsch","Munkmarsch, Sylt","Nordfriesland",null,356,596,422],
+  ["617P","list_hafen","List, Sylt","Nordfriesland","5e92d73f-e4ea-42c1-9f98-91536c17cdff",355,592,415],
 ];
+// Bezugsorte ohne BSH-Höhenvorausberechnung: nur eigene Eingabe, kein Live-Pegel.
+// [id, Name, MThw (m ü. SKN), MTnw (m ü. SKN), geschätzt?]
+const MANUAL_ROWS = [
+  ["m-juist","Juist, Hafen",3.12,0.64,false],
+  ["m-baltrum","Baltrum, Westende",3.17,0.71,false],
+  ["m-hooksiel","Hooksiel",4.12,0.73,false],
+  ["m-minsener","Minsener Oog",3.6,0.6,true],
+];
+const GAUGES = [];
+const GI = {};
+for (const r of GAUGE_ROWS) { const g = {id:r[0],api:r[1],name:r[2],region:r[3],uuid:r[4],skn:r[5],mhw:r[6],mnw:r[7]}; GAUGES.push(g); GI[g.id] = g; }
+for (const r of MANUAL_ROWS) { const g = {id:r[0],api:null,name:r[1],region:"Nur eigene Eingabe",uuid:null,man:true,mhwS:r[2],mnwS:r[3],est:r[4]}; GAUGES.push(g); GI[g.id] = g; }
+const DEFAULT_GAUGE = "764B";
 
-// ---------- Zustand ----------
-const todayISO=()=>{const d=new Date();
-  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
-let state={
-  pegel:PEGEL[5].name, date:todayISO(),
-  mode:"dry", spotVal:"0.8", spotName:"Wattenhoch",
-  draft:"1.25", margin:"0.5", surgeHW:"0", surgeNW:"0",
-  poStation:"", poSknPnp:"",
-  rows:[{type:"NW",time:"04:30",height:"0.6"},{type:"HW",time:"10:45",height:"4.3"},{type:"NW",time:"17:00",height:"0.6"}],
-};
-// Gespeicherte Monatsdaten: { pegelName: { "YYYY-MM-DD":[{type,time,height},...] } }
-let tides={};
-// Rohtext je Pegel (damit das Textfeld erhalten bleibt)
-let tidesRaw={};
-
-try{const s=JSON.parse(localStorage.getItem("tidenfenster-state"));if(s&&s.rows&&s.rows.length>=2)state={...state,...s};}catch(e){}
-if(!state.mode)state.mode=(state.dry===false)?"skn":"dry"; // Migration alter Zustände
-try{const t=JSON.parse(localStorage.getItem("tidenfenster-tides"));if(t&&typeof t==="object")tides=t;}catch(e){}
-try{const r=JSON.parse(localStorage.getItem("tidenfenster-tidesraw"));if(r&&typeof r==="object")tidesRaw=r;}catch(e){}
-
-const save=()=>{try{localStorage.setItem("tidenfenster-state",JSON.stringify(state));}catch(e){}};
-const saveTides=()=>{try{
-  localStorage.setItem("tidenfenster-tides",JSON.stringify(tides));
-  localStorage.setItem("tidenfenster-tidesraw",JSON.stringify(tidesRaw));
-}catch(e){}};
-
-// Peilungen je Stelle: { "stellenname": [{pegel,depth,note}] }
-let calib={};
-try{const cb=JSON.parse(localStorage.getItem("tidenfenster-calib"));if(cb&&typeof cb==="object")calib=cb;}catch(e){}
-const saveCalib=()=>{try{localStorage.setItem("tidenfenster-calib",JSON.stringify(calib));}catch(e){}};
-
-// ---------- Hilfsfunktionen ----------
-const toMin=s=>{if(!s)return null;const[a,b]=s.split(":").map(Number);
-  return(isNaN(a)||isNaN(b))?null:a*60+b;};
-const num=s=>parseFloat(String(s).replace(",","."));
-const f2=v=>v.toFixed(2).replace(".",",");
-const pad=n=>String(n).padStart(2,"0");
-const fmtT=min=>{
-  const m=((Math.round(min)%1440)+1440)%1440;
-  const hhmm=pad(Math.floor(m/60))+":"+pad(m%60);
-  const off=Math.floor(Math.round(min)/1440);
-  if(off>=1&&state.date){
-    const d=new Date(state.date+"T00:00:00");d.setDate(d.getDate()+off);
-    return hhmm+" ("+pad(d.getDate())+"."+pad(d.getMonth()+1)+".)";
-  }
-  return hhmm;
-};
-const fmtDur=min=>{const h=Math.floor(min/60),m=Math.round(min%60);
-  return h>0?h+" h "+pad(m)+" min":m+" min";};
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const dmy=key=>{const[y,m,d]=key.split("-");return d+"."+m+"."+y;};
-
-const tideAt=(t,ext)=>{
-  if(t<=ext[0].t)return ext[0].h;
-  if(t>=ext[ext.length-1].t)return ext[ext.length-1].h;
-  for(let i=0;i<ext.length-1;i++){
-    const a=ext[i],b=ext[i+1];
-    if(t>=a.t&&t<=b.t){const x=(t-a.t)/(b.t-a.t);
-      return a.h+(b.h-a.h)*(1-Math.cos(Math.PI*x))/2;}
-  }
-  return ext[ext.length-1].h;
+// Pegelnamen der Versionen 1.x -> neue Kennung
+const OLD_GAUGE = {
+  "Emden, Neue Seeschleuse":"507P","Borkum, Fischerbalje":"101P","Juist":"m-juist","Norderney, Riffgat":"111P",
+  "Baltrum":"m-baltrum","Langeoog":"781P","Spiekeroog":"779P","Wangerooge, West":"777P","Wangerooge, Ost":"756P",
+  "Wangerooge, Langes Riff":"754P","Wangerooge, Langes Riff (Nord)":"754P","Minsener Oog":"m-minsener","Schillig":"761P",
+  "Hooksielplate":"764B","Hooksiel, Außenhafen":"m-hooksiel","Wilhelmshaven, Alter Vorhafen":"512P",
+  "Bremerhaven, Alter Leuchtturm":"103P","Helgoland, Binnenhafen":"509A","Cuxhaven, Steubenhöft":"506P","Büsum":"505P",
+  "Husum":"510P","Wittdün, Amrum":"631P","Dagebüll":"635P","List auf Sylt":"617P",
 };
 
-// Fehlende HW/NW-Typen ergänzen (aus Höhe via Median, sonst alternierend)
-function assignTypes(arr){
-  // Fehlende Typen aus dem Vergleich mit den Nachbarhöhen ableiten
-  // (ein Scheitel ist HW, wenn er höher liegt als der benachbarte Scheitel)
-  const h=i=>(i>=0&&i<arr.length&&arr[i].height!=="")?parseFloat(arr[i].height):NaN;
-  for(let i=0;i<arr.length;i++){
-    if(arr[i].type)continue;
-    const hi=h(i),hp=h(i-1),hn=h(i+1);
-    if(!isNaN(hi)&&(!isNaN(hp)||!isNaN(hn))){
-      const ref=!isNaN(hp)?hp:hn;
-      if(hi!==ref){arr[i].type=hi>ref?"HW":"NW";continue;}
-    }
-    if(i>0&&arr[i-1].type)arr[i].type=arr[i-1].type==="HW"?"NW":"HW";
-    else if(i<arr.length-1&&arr[i+1].type)arr[i].type=arr[i+1].type==="HW"?"NW":"HW";
-    else arr[i].type="HW";
-  }
+// Kennwerte eines Pegels: aktuelle BSH-Werte, sonst die hinterlegten
+function gConsts(gid, api) {
+  const g = GI[gid];
+  if (!g) return {skn:null, mhwP:null, mnwP:null, mhwS:NaN, mnwS:NaN};
+  if (g.man) return {skn:null, mhwP:null, mnwP:null, mhwS:g.mhwS, mnwS:g.mnwS, est:!!g.est};
+  const a = api && api[gid];
+  const skn = a && a.skn != null ? a.skn : g.skn;
+  const mhw = a && a.mhw != null ? a.mhw : g.mhw;
+  const mnw = a && a.mnw != null ? a.mnw : g.mnw;
+  return {skn, mhwP:mhw, mnwP:mnw, mhwS:(mhw - skn) / 100, mnwS:(mnw - skn) / 100};
 }
 
-// ---------- Monatstafel parsen ----------
-function parseMonth(txt,defaultYear){
-  const store={};
-  let curKey=null;
-  for(const line of txt.split(/[\n\r]+/)){
-    if(!line.trim())continue;
-    // Datum DD.MM. oder DD.MM.YYYY (zwei Punkte schützen vor Verwechslung mit Höhen/Zeiten)
-    const dm=line.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})?/);
-    if(dm){
-      const d=+dm[1],mo=+dm[2];
-      const yr=dm[3]?+dm[3]:defaultYear;
-      if(d>=1&&d<=31&&mo>=1&&mo<=12){
-        curKey=yr+"-"+pad(mo)+"-"+pad(d);
-        if(!store[curKey])store[curKey]=[];
-      }
-    }
-    if(!curKey)continue;
-    // Tokens; Zeiten nur mit Doppelpunkt (HH:MM), Höhen mit , oder .
-    const toks=line.split(/[\s;|]+/).filter(Boolean);
-    let cur=null,pendingType=null;
-    for(const tk of toks){
-      const tm=tk.match(/^(\d{1,2}):(\d{2})$/);
-      if(tm){
-        if(cur)store[curKey].push(cur);
-        cur={type:pendingType,time:pad(Math.min(23,+tm[1]))+":"+pad(Math.min(59,+tm[2])),height:""};
-        pendingType=null;
-        continue;
-      }
-      // HW/NW kann vor ODER nach der Uhrzeit stehen
-      if(/^(hw|hochwasser|h)$/i.test(tk)){
-        if(cur&&!cur.type)cur.type="HW";else pendingType="HW";
-        continue;
-      }
-      if(/^(nw|niedrigwasser|n)$/i.test(tk)){
-        if(cur&&!cur.type)cur.type="NW";else pendingType="NW";
-        continue;
-      }
-      if(!cur)continue;
-      const hm=tk.match(/^(-?\d+[.,]\d+)$/);
-      if(hm&&cur.height===""){cur.height=hm[1].replace(",",".");continue;}
-    }
-    if(cur)store[curKey].push(cur);
+// ---------- Zahlen ----------
+const pad = n => String(n).padStart(2, "0");
+function num(s) {
+  if (typeof s === "number") return s;
+  if (s == null) return NaN;
+  const t = String(s).trim().replace(/\s*m$/i, "").replace(",", ".").replace(/^\+/, "");
+  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(t)) return NaN;
+  return parseFloat(t);
+}
+function numOrNull(x) {
+  if (typeof x === "number") return isFinite(x) ? x : null;
+  if (typeof x === "string" && x.trim() !== "") { const v = parseFloat(x.replace(",", ".")); return isFinite(v) ? v : null; }
+  return null;
+}
+const f2 = v => (Math.round(v * 100) / 100).toFixed(2).replace("-0.00", "0.00").replace(".", ",");
+const f1 = v => (Math.round(v * 10) / 10).toFixed(1).replace("-0.0", "0.0").replace(".", ",");
+const sg2 = v => (Math.round(v * 100) === 0 ? "±" : v > 0 ? "+" : "−") + f2(Math.abs(v));
+
+// ---------- Zeit: alles in gesetzlicher deutscher Zeit, unabhängig von der Geräteeinstellung ----------
+const TZ = "Europe/Berlin";
+const _fmtB = new Intl.DateTimeFormat("en-GB", {timeZone:TZ, hourCycle:"h23", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+function bParts(ms) {
+  const o = {};
+  for (const p of _fmtB.formatToParts(new Date(ms))) o[p.type] = p.value;
+  return {y:+o.year, mo:+o.month, d:+o.day, h:+o.hour % 24, mi:+o.minute};
+}
+function bToMs(y, mo, d, h, mi) {
+  const want = Date.UTC(y, mo - 1, d, h, mi);
+  let g = want;
+  for (let i = 0; i < 3; i++) {
+    const p = bParts(g);
+    const diff = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi) - want;
+    if (diff === 0) break;
+    g -= diff;
   }
-  // pro Tag: sortieren, Typen ergänzen, Doppelte (gleiche Zeit) entfernen
-  for(const k in store){
-    let arr=store[k];
-    const seen={};
-    arr=arr.filter(o=>{if(seen[o.time])return false;seen[o.time]=1;return true;});
-    arr.sort((a,b)=>toMin(a.time)-toMin(b.time));
+  return g;
+}
+const dStr = (y, mo, d) => y + "-" + pad(mo) + "-" + pad(d);
+function validDate(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.UTC(+s.slice(0,4), +s.slice(5,7) - 1, +s.slice(8,10))); }
+function addDays(ds, n) { const u = new Date(Date.UTC(+ds.slice(0,4), +ds.slice(5,7) - 1, +ds.slice(8,10) + n)); return dStr(u.getUTCFullYear(), u.getUTCMonth() + 1, u.getUTCDate()); }
+function dayStart(ds) { return bToMs(+ds.slice(0,4), +ds.slice(5,7), +ds.slice(8,10), 0, 0); }
+function dateOf(ms) { const p = bParts(ms); return dStr(p.y, p.mo, p.d); }
+function hhmm(ms) { const p = bParts(ms); return pad(p.h) + ":" + pad(p.mi); }
+const WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+function fmtDate(ds) { const wd = WD[new Date(Date.UTC(+ds.slice(0,4), +ds.slice(5,7) - 1, +ds.slice(8,10))).getUTCDay()]; return wd + " " + ds.slice(8,10) + "." + ds.slice(5,7) + "." + ds.slice(0,4); }
+const fmtDM = ds => ds.slice(8,10) + "." + ds.slice(5,7) + ".";
+// Uhrzeit, mit Datum in Klammern, wenn sie nicht auf den Bezugstag fällt
+function fmtT(ms, refDate) { const d = dateOf(ms); return hhmm(ms) + (refDate && d !== refDate ? " (" + fmtDM(d) + ")" : ""); }
+function fmtDur(ms) { const m = Math.round(ms / MIN), h = Math.floor(m / 60); return h > 0 ? h + " h " + pad(m % 60) + " min" : m + " min"; }
+// Zeitstempel wie "2026-11-11 07:14:00+01:00" oder "2026-11-11T11:57:00+01:00"
+function parseTs(s) {
+  const m = /^(\d{4})-(\d\d)-(\d\d)[ T](\d\d):(\d\d)(?::(\d\d))?(?:\.\d+)?\s*(Z|[+-]\d\d:?\d\d)?$/.exec(String(s || "").trim());
+  if (!m) return NaN;
+  const utc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  if (!m[7]) return bToMs(+m[1], +m[2], +m[3], +m[4], +m[5]);
+  if (m[7] === "Z") return utc;
+  const sign = m[7][0] === "-" ? -1 : 1, hh = +m[7].slice(1,3), mm = +m[7].slice(-2);
+  return utc - sign * (hh * 60 + mm) * MIN;
+}
+const isoUtc = ms => new Date(ms).toISOString().slice(0, 19) + "+00:00";
+
+// ---------- Tidekurve ----------
+// Zwischen zwei Scheiteln wird mit der Kurvenform des Pegels gerechnet (ev.sh), ersatzweise mit einer Kosinuskurve.
+// Die Kurvenform ist der Anteil des Tidenstiegs bzw. -falls an 21 Stützstellen zwischen den Scheiteln.
+const MAX_GAP = 9 * HOUR; // liegen zwei Scheitel weiter auseinander, fehlt einer: dazwischen wird nicht gerechnet
+const SHN = 20;
+const cosFrac = x => (1 - Math.cos(Math.PI * x)) / 2;
+function shapeFrac(tab, x) { const p = x * SHN, i = Math.min(SHN - 1, Math.max(0, Math.floor(p))); return tab[i] + (tab[i + 1] - tab[i]) * (p - i); }
+function levelAt(ev, t) {
+  const n = ev.length;
+  if (n < 2 || t < ev[0].t || t > ev[n - 1].t) return NaN;
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (ev[mid].t <= t) lo = mid; else hi = mid; }
+  const a = ev[lo], b = ev[hi];
+  if (b.t - a.t > MAX_GAP) return NaN;
+  const x = (t - a.t) / (b.t - a.t), tab = ev.sh ? (a.k === "N" ? ev.sh.R : ev.sh.F) : null;
+  return a.h + (b.h - a.h) * (tab ? shapeFrac(tab, x) : cosFrac(x));
+}
+// Wert einer Messkurve zur Zeit t; keine Angabe außerhalb und in Lücken über 30 Minuten
+function curveAt(c, t) {
+  const n = c.length;
+  if (!n || t < c[0].t || t > c[n - 1].t) return NaN;
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (c[mid].t <= t) lo = mid; else hi = mid; }
+  const a = c[lo], b = c[hi];
+  if (b.t - a.t > 30 * MIN) return NaN;
+  return b.t === a.t ? a.v : a.v + (b.v - a.v) * (t - a.t) / (b.t - a.t);
+}
+// Kurvenform aus einer Kurve (cm) und ihren Scheiteln: Median über alle vollständigen Tiden
+function deriveShape(curve, ex) {
+  const col = {R:[], F:[]};
+  for (let i = 0; i < ex.length - 1; i++) {
+    const a = ex[i], b = ex[i + 1], dur = b.t - a.t, rng = b.h - a.h;
+    if (a.k === b.k || dur < 4 * HOUR || dur > 8.5 * HOUR || Math.abs(rng) < 100) continue;
+    const fr = [];
+    for (let j = 0; j <= SHN; j++) { const f = (curveAt(curve, a.t + dur * j / SHN) - a.h) / rng; if (!isFinite(f) || f < -0.15 || f > 1.15) break; fr.push(f); }
+    if (fr.length === SHN + 1) col[a.k === "N" ? "R" : "F"].push(fr);
+  }
+  if (col.R.length < 4 || col.F.length < 4) return null;
+  const med = list => {
+    const out = [];
+    for (let j = 0; j <= SHN; j++) { const v = list.map(f => f[j]).sort((x, y) => x - y), m = v.length >> 1; out.push(v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2); }
+    out[0] = 0; out[SHN] = 1;
+    for (let j = 1; j < SHN; j++) out[j] = Math.min(1, Math.max(out[j - 1], out[j]));
+    return out.map(x => Math.round(x * 1000) / 1000);
+  };
+  return {R:med(col.R), F:med(col.F), n:[col.R.length, col.F.length]};
+}
+// Zeiträume mit Wasserstand >= req zwischen from und to (Minutenraster)
+function findWindows(ev, req, from, to) {
+  const res = [];
+  if (ev.length < 2) return res;
+  let open = null, cutA = false, prevValid = isFinite(levelAt(ev, from - MIN));
+  for (let t = from; t <= to; t += MIN) {
+    const l = levelAt(ev, t), valid = isFinite(l), ok = valid && l >= req;
+    if (ok && open === null) { open = t; cutA = !prevValid; }
+    if (!ok && open !== null) { res.push({a:open, b:t - MIN, cutA, cutB:!valid}); open = null; }
+    prevValid = valid;
+  }
+  if (open !== null) res.push({a:open, b:to, cutA, cutB:false, beyond:true});
+  return res;
+}
+
+// ---------- Scheitel zusammenstellen ----------
+// db = { man:{pegel:{datum:[{type,time,height}]}}, ovr:{pegel:{datum:true}}, api:{pegel:{skn,mhw,mnw,e:[[min,'H'|'N',tp,fc,unc]]}} }
+function manEvents(db, gid, date) {
+  const rows = db.man && db.man[gid] && db.man[gid][date];
+  if (!Array.isArray(rows)) return [];
+  const src = db.ovr && db.ovr[gid] && db.ovr[gid][date] ? "ovr" : "man";
+  const out = [];
+  for (const r of rows) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(r.time || "").trim());
+    if (!m) continue;
+    out.push({t:bToMs(+date.slice(0,4), +date.slice(5,7), +date.slice(8,10), +m[1], +m[2]), h:num(r.height), k:r.type === "HW" ? "H" : "N", src, fc:null, unc:null});
+  }
+  return out;
+}
+function apiEvents(db, gid) {
+  const a = db.api && db.api[gid];
+  if (!a || !Array.isArray(a.e) || a.skn == null) return [];
+  const out = [];
+  for (const e of a.e) {
+    if (e[2] == null) continue;
+    out.push({t:e[0] * MIN, h:(e[2] - a.skn) / 100, k:e[1], src:"bsh", fc:e[3] == null ? null : (e[3] - a.skn) / 100, unc:e[4] == null ? null : e[4] / 100});
+  }
+  return out;
+}
+// Scheitel rund um einen Tag. Rangfolge: am Tag geänderte Scheitel > BSH-Schnittstelle > eingefügte Tafel
+function buildEvents(db, gid, date) {
+  const ds = dayStart(date), from = ds - 36 * HOUR, to = ds + 60 * HOUR;
+  const A0 = apiEvents(db, gid).filter(e => e.t >= from && e.t <= to);
+  let M = [];
+  for (const d of [addDays(date, -1), date, addDays(date, 1)]) M = M.concat(manEvents(db, gid, d));
+  const ovrDays = {};
+  for (const e of M) if (e.src === "ovr") ovrDays[dateOf(e.t)] = true;
+  const A = A0.filter(e => !ovrDays[dateOf(e.t)]);
+  if (A0.length) {
+    const lo = A0[0].t - 200 * MIN, hi = A0[A0.length - 1].t + 200 * MIN;
+    M = M.filter(e => e.src === "ovr" || e.t < lo || e.t > hi);
+  }
+  const all = A.concat(M).sort((x, y) => x.t - y.t);
+  // Nahtstellen: gleichartige Nachbarn aus verschiedenen Quellen -> den nachrangigen Eintrag verwerfen
+  const rank = {ovr:3, bsh:2, man:1};
+  for (let i = 0; i < all.length - 1; ) {
+    const a = all[i], b = all[i + 1];
+    if (a.k === b.k && a.src !== b.src) { all.splice(rank[a.src] < rank[b.src] ? i : i + 1, 1); if (i > 0) i--; }
+    else i++;
+  }
+  return all;
+}
+function checkEvents(ev, date) {
+  if (ev.length < 2) return "nodata";
+  for (const e of ev) if (!isFinite(e.h)) return "Beim Scheitel am " + fmtDM(dateOf(e.t)) + " um " + hhmm(e.t) + " fehlt die Höhe.";
+  for (let i = 1; i < ev.length; i++) {
+    if (ev[i].k === ev[i - 1].k && ev[i].t - ev[i - 1].t <= MAX_GAP)
+      return "Zwei " + (ev[i].k === "H" ? "Hochwasser" : "Niedrigwasser") + " folgen direkt aufeinander (" + fmtT(ev[i - 1].t, date) + " und " + fmtT(ev[i].t, date) + "). Hoch- und Niedrigwasser müssen sich abwechseln.";
+    if (ev[i].t === ev[i - 1].t) return "Zwei Scheitel haben dieselbe Uhrzeit (" + fmtT(ev[i].t, date) + ").";
+  }
+  return null;
+}
+
+// ---------- Abweichung durch Wind ----------
+// cfg.m: "off" | "bsh" (BSH-Vorhersage je Scheitel) | "zus" (Zuschlag auf die Vorausberechnung) | "mit" (Abweichung vom mittleren HW/NW)
+function applySurge(ev, cfg, c) {
+  const m = cfg && cfg.m || "off";
+  let hw = num(cfg && cfg.hw), nw = num(cfg && cfg.nw);
+  if (!isFinite(hw)) hw = 0;
+  if (!isFinite(nw)) nw = 0;
+  const last = {H:null, N:null};
+  let used = 0, carried = 0;
+  const out = ev.map(e => {
+    const o = Object.assign({}, e, {tp:e.h, how:""});
+    if (m === "zus") { o.h = e.h + (e.k === "H" ? hw : nw); o.how = "zus"; }
+    else if (m === "mit") { o.h = (e.k === "H" ? c.mhwS + hw : c.mnwS + nw); o.how = "mit"; }
+    else if (m === "bsh") {
+      if (e.fc != null) { o.h = e.fc; o.how = "fc"; last[e.k] = e.fc - e.h; used++; }
+      else if (last[e.k] != null && last[e.k] < 0) { o.h = e.h + last[e.k]; o.how = "carry"; carried++; } // niedrigeren Stand vorsichtshalber fortschreiben
+    }
+    return o;
+  });
+  return {ev:out, used, carried};
+}
+
+// ---------- Stelle ----------
+// Höhe des Grundes über SKN (negativ = unter SKN)
+function sillOf(spot, c) {
+  const v = num(spot.val);
+  if (!isFinite(v)) return NaN;
+  if (spot.mode === "skn") return -Math.abs(v);
+  if (spot.mode === "mhw") return c.mhwS - Math.abs(v);
+  return Math.abs(v);
+}
+
+// ---------- Tagesrechnung ----------
+function calcDay(db, spot, boat, date, surge, shape) {
+  const g = GI[spot.gauge];
+  if (!g) return {err:"Für diese Stelle ist kein Pegel gewählt."};
+  const c = gConsts(spot.gauge, db.api);
+  const draft = num(boat.draft), margin = num(boat.margin);
+  if (!isFinite(draft) || draft <= 0) return {err:"Bitte den Tiefgang eintragen (unter „Mehr“)."};
+  if (!isFinite(margin) || margin < 0) return {err:"Bitte die Sicherheitsmarge eintragen."};
+  const sill = sillOf(spot, c);
+  if (!isFinite(sill)) return {err:spot.mode === "mhw" && isFinite(num(spot.val)) ? "Für diesen Pegel ist kein mittleres Hochwasser bekannt." : "Bitte die Höhe oder Tiefe der Stelle eintragen."};
+  let lag = num(spot.lag);
+  if (!isFinite(lag)) lag = 0;
+  const req = sill + draft + margin;
+  const base = buildEvents(db, spot.gauge, date);
+  const problem = checkEvents(base, date);
+  const ds = dayStart(date), de = dayStart(addDays(date, 1));
+  if (problem) return {err:problem === "nodata" ? "" : problem, nodata:problem === "nodata", c, sill, req, draft, margin, ds, de, date, gauge:g};
+  const s = applySurge(base, surge, c);
+  if (s.ev.some(e => !isFinite(e.h))) return {err:"Für diesen Pegel ist kein mittleres Hoch-/Niedrigwasser bekannt – bitte die Abweichung als Zuschlag eingeben.", c, sill, req, draft, margin, ds, de, date, gauge:g};
+  const ev = s.ev.map(e => Object.assign(e, {t:e.t + lag * MIN}));
+  ev.sh = shape && shape.R && shape.F ? shape : null;
+  const t0 = ev[0].t, t1 = ev[ev.length - 1].t;
+  const wins = findWindows(ev, req, ds - 12 * HOUR, de + 12 * HOUR).filter(w => w.b >= ds && w.a < de);
+  const rows = [];
+  for (let t = ds; t < de; t += 30 * MIN) {
+    const lvl = levelAt(ev, t);
+    if (!isFinite(lvl)) rows.push({t, nd:true});
+    else rows.push({t, lvl, depth:lvl - sill, clr:lvl - sill - draft, ok:lvl >= req});
+  }
+  const evDay = ev.filter(e => e.t >= ds && e.t < de);
+  const hws = evDay.filter(e => e.k === "H");
+  const top = hws.length ? hws.reduce((a, b) => (b.h > a.h ? b : a)) : null;
+  const near = ev.filter(e => e.t >= ds - 6 * HOUR && e.t < de + 6 * HOUR);
+  const srcs = {};
+  for (const e of near) srcs[e.src] = true;
+  return {date, gauge:g, c, sill, req, draft, margin, lag, ev, evDay, sh:ev.sh, t0, t1, ds, de, wins, rows, top, srcs, covered:t0 <= ds && t1 >= de,
+    surgeMode:surge && surge.m || "off", fcUsed:evDay.filter(e => e.how === "fc").length, carried:evDay.filter(e => e.how === "carry").length};
+}
+// Lage zu einem Zeitpunkt; off = Korrektur aus dem Live-Pegel (m)
+function nowInfo(res, now, off) {
+  off = off || 0;
+  const raw = levelAt(res.ev, now);
+  if (!isFinite(raw)) return null;
+  const lvl = raw + off;
+  const ev2 = off ? res.ev.map(e => Object.assign({}, e, {h:e.h + off})) : res.ev;
+  ev2.sh = res.ev.sh;
+  const wins = findWindows(ev2, res.req, now, now + 30 * HOUR);
+  const o = {lvl, depth:lvl - res.sill, clr:lvl - res.sill - res.draft, ok:lvl >= res.req, until:null, next:null, cut:false};
+  if (o.ok && wins.length && wins[0].a <= now + MIN) { o.until = wins[0].b; o.cut = !!(wins[0].cutB || wins[0].beyond); }
+  else { const w = wins.find(x => x.a > now); if (w) { o.next = w.a; o.nextEnd = w.b; } }
+  return o;
+}
+
+// ---------- Eigene Peilungen ----------
+function echoAdd(boat) { const e = num(boat.echo); return isFinite(e) ? e : num(boat.draft); }
+function peilSill(p) { const l = num(p.level), d = num(p.depth); return isFinite(l) && isFinite(d) ? l - d : NaN; }
+function peilStats(list) {
+  const hs = (list || []).map(peilSill).filter(isFinite);
+  if (!hs.length) return null;
+  const mean = hs.reduce((a, b) => a + b, 0) / hs.length;
+  return {n:hs.length, mean, min:Math.min.apply(null, hs), max:Math.max.apply(null, hs), spread:Math.max.apply(null, hs) - Math.min.apply(null, hs)};
+}
+
+// ---------- Eingefügte BSH-Tafel lesen ----------
+function assignTypes(arr) {
+  const h = i => (i >= 0 && i < arr.length && arr[i].height !== "") ? parseFloat(arr[i].height) : NaN;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i].type) continue;
+    const hi = h(i), hp = h(i - 1), hn = h(i + 1);
+    if (!isNaN(hi) && (!isNaN(hp) || !isNaN(hn))) { const ref = !isNaN(hp) ? hp : hn; if (hi !== ref) { arr[i].type = hi > ref ? "HW" : "NW"; continue; } }
+    if (i > 0 && arr[i - 1].type) arr[i].type = arr[i - 1].type === "HW" ? "NW" : "HW";
+    else if (i < arr.length - 1 && arr[i + 1].type) arr[i].type = arr[i + 1].type === "HW" ? "NW" : "HW";
+    else arr[i].type = "HW";
+  }
+}
+function parseMonth(txt, defaultYear) {
+  const store = {};
+  let curKey = null;
+  for (const line of String(txt || "").split(/[\n\r]+/)) {
+    if (!line.trim()) continue;
+    const dm = line.match(/(?:^|[^\d.,])(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})?(?!\d)/);
+    if (dm) {
+      const d = +dm[1], mo = +dm[2], yr = dm[3] ? (dm[3].length === 2 ? 2000 + +dm[3] : +dm[3]) : defaultYear;
+      if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) { curKey = dStr(yr, mo, d); if (!store[curKey]) store[curKey] = []; }
+    }
+    if (!curKey) continue;
+    let cur = null, pending = null;
+    for (const tk of line.split(/[\s;|]+/).filter(Boolean)) {
+      const tm = tk.match(/^(\d{1,2}):(\d{2})$/);
+      if (tm) {
+        if (+tm[1] > 23 || +tm[2] > 59) continue;
+        if (cur) store[curKey].push(cur);
+        cur = {type:pending, time:pad(+tm[1]) + ":" + tm[2], height:""};
+        pending = null;
+        continue;
+      }
+      if (/^(hw|hochwasser)$/i.test(tk)) { if (cur && !cur.type) cur.type = "HW"; else pending = "HW"; continue; }
+      if (/^(nw|niedrigwasser)$/i.test(tk)) { if (cur && !cur.type) cur.type = "NW"; else pending = "NW"; continue; }
+      if (!cur) continue;
+      const hm = tk.match(/^([+-]?\d+[.,]\d+)$/);
+      if (hm && cur.height === "") cur.height = hm[1].replace(",", ".").replace(/^\+/, "");
+    }
+    if (cur) store[curKey].push(cur);
+  }
+  for (const k of Object.keys(store)) {
+    const seen = {};
+    const arr = store[k].filter(o => (seen[o.time] ? false : (seen[o.time] = true)));
+    arr.sort((a, b) => a.time < b.time ? -1 : 1);
     assignTypes(arr);
-    store[k]=arr;
+    if (arr.length) store[k] = arr; else delete store[k];
   }
   return store;
 }
-
-// Scheitel des Vor- und Folgetages aus den gespeicherten Monatsdaten
-function neighborScheitel(){
-  const store=tides[state.pegel]||{};
-  if(!state.date)return{pre:[],post:[]};
-  const key=x=>x.getFullYear()+"-"+pad(x.getMonth()+1)+"-"+pad(x.getDate());
-  const d=new Date(state.date+"T00:00:00");
-  if(isNaN(d.getTime()))return{pre:[],post:[]};
-  const p=new Date(d);p.setDate(p.getDate()-1);
-  const n=new Date(d);n.setDate(n.getDate()+1);
-  return{pre:store[key(p)]||[],post:store[key(n)]||[]};
+// Höhen sehen nach Pegelnull statt Seekartennull aus?
+function looksLikePnp(store, c) {
+  const hw = [];
+  for (const k of Object.keys(store)) for (const r of store[k]) if (r.type === "HW" && r.height !== "") hw.push(parseFloat(r.height));
+  if (hw.length < 2 || !isFinite(c.mhwS)) return false;
+  hw.sort((a, b) => a - b);
+  return hw[hw.length >> 1] > c.mhwS + 1.5;
 }
 
-// ---------- Berechnung ----------
-function calc(){
-  const d=num(state.draft),mg=num(state.margin),sv=num(state.spotVal);
-  if([d,mg,sv].some(isNaN))return{error:"Bitte alle Zahlenfelder ausfüllen."};
-  let surgeHW=num(state.surgeHW);if(isNaN(surgeHW))surgeHW=0;
-  let surgeNW=num(state.surgeNW);if(isNaN(surgeNW))surgeNW=0;
-  const g=PEGEL.find(p=>p.name===state.pegel)||{mhw:3.0};
-  let chartDepth;
-  if(state.mode==="dry")chartDepth=-Math.abs(sv);        // Watthöhe über SKN
-  else if(state.mode==="mhw")chartDepth=Math.abs(sv)-g.mhw; // Tiefe bei MThw → Seegrund = MThw − Tiefe
-  else chartDepth=Math.abs(sv);                          // Kartentiefe unter SKN
-  const ext=[];
-  for(const r of state.rows){
-    const t=toMin(r.time),h=num(r.height);
-    if(t===null||isNaN(h))return{error:"Bitte alle Gezeiten-Scheitel (Zeit und Höhe) ausfüllen."};
-    ext.push({t,h:h+(r.type==="HW"?surgeHW:surgeNW),type:r.type});
+// ---------- BSH-Schnittstelle (Water Level Forecast API, CC BY 4.0) ----------
+const bshUrl = api => "https://gdi.bsh.de/ldproxy/rest/services/WaterLevelForecast/collections/waterlevelforecastdata/items/" + encodeURIComponent(api) + "?f=json";
+const stripTags = s => String(s || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+function parseBsh(json) {
+  const p = json && (json.properties || json);
+  if (!p || !Array.isArray(p.high_water_low_water)) return null;
+  const e = [];
+  for (const x of p.high_water_low_water) {
+    const t = parseTs(x.event_timestamp);
+    const k = x.event === "HW" ? "H" : x.event === "NW" ? "N" : null;
+    if (isNaN(t) || !k) continue;
+    const tp = numOrNull(x.tidal_prediction_value != null ? x.tidal_prediction_value : x.tidal_prediction && x.tidal_prediction.value);
+    const fc = numOrNull(x.forecast_value != null ? x.forecast_value : x.forecast && x.forecast.value);
+    const unc = numOrNull(x.forecast_uncertainty != null ? x.forecast_uncertainty : x.forecast && x.forecast.uncertainty);
+    e.push([Math.round(t / MIN), k, tp, fc, unc]);
   }
-  for(let i=1;i<ext.length;i++){
-    while(ext[i].t<=ext[i-1].t)ext[i].t+=1440;
-    if(ext[i].type===ext[i-1].type)return{error:"Die Scheitel müssen abwechselnd NW und HW sein."};
+  e.sort((a, b) => a[0] - b[0]);
+  const skn = numOrNull(p.chartdatum_relative_to_gaugezero);
+  if (skn == null || !e.length) return null;
+  const txt = p.forecast_text && (p.forecast_text.de || p.forecast_text);
+  const ft = parseTs(p.forecast_timestamp);
+  let sh = null;
+  if (Array.isArray(p.curve) && p.curve.length > 100) {
+    const curve = [];
+    for (const c of p.curve) { const t = parseTs(c.timestamp), v = numOrNull(c.tidal_prediction); if (!isNaN(t) && v != null) curve.push({t, v}); }
+    curve.sort((a, b) => a.t - b.t);
+    sh = deriveShape(curve, e.filter(x => x[2] != null).map(x => ({t:x[0] * MIN, h:x[2], k:x[1]})));
   }
-  // Nachbartage aus den gespeicherten Monatsdaten anhängen, damit die Kurve
-  // die vollen 24 h abdeckt und Fenster am Rand nicht abgeschnitten werden
-  const nb=neighborScheitel();
-  let dayStart=0, dayEnd=1440; // Fenster des gewählten Kalendertages in ext-Zeitrechnung
-  if(nb.pre.length){
-    const p=nb.pre[nb.pre.length-1];
-    const pt=toMin(p.time)-1440;
-    if(pt<ext[0].t && p.type!==ext[0].type){
-      ext.unshift({t:pt,h:num(p.height)+(p.type==="HW"?surgeHW:surgeNW),type:p.type});
-    }
-  }
-  if(nb.post.length){
-    const q=nb.post[0];
-    const last=ext[ext.length-1];
-    const qt=toMin(q.time)+1440;
-    if(qt>last.t && q.type!==last.type){
-      ext.push({t:qt,h:num(q.height)+(q.type==="HW"?surgeHW:surgeNW),type:q.type});
-    }
-  }
-  const reqTide=d+mg-chartDepth;
-  const t0=ext[0].t,t1=ext[ext.length-1].t;
-  const windows=[];let open=null;let prevOk=tideAt(t0,ext)>=reqTide;
-  if(prevOk)open=t0;
-  for(let t=t0+1;t<=t1;t++){
-    const ok=tideAt(t,ext)>=reqTide;
-    if(ok&&!prevOk)open=t;
-    if(!ok&&prevOk&&open!==null){windows.push([open,t-1]);open=null;}
-    prevOk=ok;
-  }
-  if(open!==null)windows.push([open,t1]);
-  // Tabelle: volle 24 h des gewählten Tages (00:00–23:30).
-  // Zeiten ausserhalb der Stützpunkte werden als "keine Daten" markiert statt geklemmt.
-  const table=[];
-  for(let t=dayStart;t<dayEnd;t+=30){
-    if(t<t0||t>t1){ table.push({t,noData:true}); continue; }
-    const tide=tideAt(t,ext),depth=chartDepth+tide;
-    table.push({t,tide,depth,ok:tide>=reqTide,clearance:depth-d});
-  }
-  return{ext,chartDepth,reqTide,windows,table,t0,t1,draft:d,surgeHW,surgeNW};
+  return {skn, mhw:numOrNull(p.mean_high_water), mnw:numOrNull(p.mean_low_water), ft:isNaN(ft) ? null : ft, text:typeof txt === "string" ? stripTags(txt) : "", e, sh};
+}
+// Neue Antwort mit dem Zwischenspeicher verbinden: ältere Scheitel bleiben einige Tage erhalten
+function mergeApi(old, neu, now) {
+  const first = neu.e[0][0], keepFrom = now / MIN - 4 * 1440;
+  const prev = old && Array.isArray(old.e) ? old.e.filter(x => x[0] < first - 120 && x[0] >= keepFrom) : [];
+  return Object.assign({}, neu, {e:prev.concat(neu.e), at:now, sh:neu.sh || (old && old.sh) || null});
 }
 
-// ---------- SVG-Grafik ----------
-function svgChart(c){
-  const W=720,H=300,padL=46,padR=14,padT=18,padB=30;
-  const sillTop=-c.chartDepth;
-  const maxH=Math.max(...c.ext.map(e=>e.h),c.reqTide)+0.4;
-  const minH=Math.min(0,sillTop,...c.ext.map(e=>e.h))-0.4;
-  const X=t=>padL+(t-c.t0)/(c.t1-c.t0)*(W-padL-padR);
-  const Y=h=>padT+(maxH-h)/(maxH-minH)*(H-padT-padB);
-  let path="";const N=300;
-  for(let i=0;i<=N;i++){const t=c.t0+(c.t1-c.t0)*i/N;
-    path+=(i===0?"M":"L")+X(t).toFixed(1)+","+Y(tideAt(t,c.ext)).toFixed(1);}
-  const area=path+"L"+X(c.t1).toFixed(1)+","+Y(minH)+"L"+X(c.t0).toFixed(1)+","+Y(minH)+"Z";
-  const span=c.t1-c.t0,step=span>16*60?180:120;
-  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tidekurve mit befahrbarem Zeitfenster">';
-  s+='<path d="'+area+'" fill="#BFDCEA"/>';
-  s+='<rect x="'+padL+'" y="'+Y(sillTop)+'" width="'+(W-padL-padR)+'" height="'+(Y(minH)-Y(sillTop))+'" fill="'+(c.chartDepth<0?"#A9C79C":"#D9CFA8")+'"/>';
-  s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(sillTop)+'" y2="'+Y(sillTop)+'" stroke="#5E7D52" stroke-width="2"/>';
-  s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(0)+'" y2="'+Y(0)+'" stroke="#1C2B33" stroke-width="1" stroke-dasharray="2 3" opacity="0.5"/>';
-  for(let h=Math.ceil(minH);h<=Math.floor(maxH);h++){
-    s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(h)+'" y2="'+Y(h)+'" stroke="#C7D2D8" stroke-width="0.7"/>';
-    s+='<text x="'+(padL-6)+'" y="'+(Y(h)+4)+'" text-anchor="end" font-size="11" font-family="ui-monospace,monospace" fill="#5A6B73">'+h+' m</text>';
-  }
-  for(let t=Math.ceil(c.t0/step)*step;t<=c.t1;t+=step){
-    s+='<text x="'+X(t)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="#5A6B73">'+fmtT(t).slice(0,5)+'</text>';
-  }
-  for(const[a,b]of c.windows){
-    s+='<rect x="'+X(a)+'" y="'+padT+'" width="'+(X(b)-X(a))+'" height="'+(H-padT-padB)+'" fill="#C2188C" opacity="0.10"/>';
-  }
-  s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(c.reqTide)+'" y2="'+Y(c.reqTide)+'" stroke="#C2188C" stroke-width="2" stroke-dasharray="6 4"/>';
-  s+='<text x="'+(W-padR-4)+'" y="'+(Y(c.reqTide)-5)+'" text-anchor="end" font-size="11.5" font-family="ui-monospace,monospace" font-weight="600" fill="#C2188C">Tiefgang + Marge</text>';
-  s+='<path d="'+path+'" fill="none" stroke="#2E6E8E" stroke-width="2.5"/>';
-  for(const e of c.ext){
-    s+='<circle cx="'+X(e.t)+'" cy="'+Y(e.h)+'" r="4" fill="#fff" stroke="#2E6E8E" stroke-width="2"/>';
-    s+='<text x="'+X(e.t)+'" y="'+(Y(e.h)+(e.type==="HW"?-10:18))+'" text-anchor="middle" font-size="11.5" font-family="ui-monospace,monospace" font-weight="600" fill="#1C2B33">'+e.type+' '+e.h.toFixed(1).replace(".",",")+'</text>';
-  }
-  for(const[a,b]of c.windows){
-    for(const t of[a,b]){
-      s+='<line x1="'+X(t)+'" x2="'+X(t)+'" y1="'+padT+'" y2="'+(H-padB)+'" stroke="#C2188C" stroke-width="1.5"/>';
-      s+='<text x="'+X(t)+'" y="'+(padT-5)+'" text-anchor="middle" font-size="11.5" font-family="ui-monospace,monospace" font-weight="600" fill="#C2188C">'+fmtT(t).slice(0,5)+'</text>';
-    }
-  }
-  return s+"</svg>";
+// ---------- PEGELONLINE (WSV), Rohdaten ----------
+const poUrl = (uuid, q) => "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/" + uuid + "/W/measurements.json?" + q;
+function parsePo(arr) {
+  const out = [];
+  if (!Array.isArray(arr)) return out;
+  for (const x of arr) { const t = parseTs(x && x.timestamp), v = numOrNull(x && x.value); if (!isNaN(t) && v != null) out.push({t, v}); }
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
+function nearest(series, t, tol) {
+  let best = null, bd = Infinity;
+  for (const p of series) { const d = Math.abs(p.t - t); if (d < bd) { bd = d; best = p; } }
+  return best && bd <= tol ? best : null;
+}
+const poPlausible = (v, c) => c.mhwP == null || (v > c.mnwP - 300 && v < c.mhwP + 450);
+// Auswertung einer Messreihe (cm über Pegelnull)
+function liveState(series, c, now) {
+  if (!series || !series.length || c.skn == null) return null;
+  const good = series.filter(p => poPlausible(p.v, c));
+  const last = series[series.length - 1];
+  if (!poPlausible(last.v, c)) return {bad:true, t:last.t, v:last.v, age:now - last.t};
+  const o = {t:last.t, v:last.v, lvl:(last.v - c.skn) / 100, age:now - last.t, bad:false, trend:null};
+  const before = nearest(good, last.t - 30 * MIN, 4 * MIN);
+  if (before) o.trend = (last.v - before.v) * 2; // cm je Stunde
+  o.fresh = o.age <= 20 * MIN && o.age > -5 * MIN;
+  return o;
 }
 
-// ---------- Rendering ----------
-const $=id=>document.getElementById(id);
+// Messreihe glätten (5-Minuten-Raster) und ihre Hoch- und Niedrigwasser finden
+function extremesOf(series, c) {
+  const raw = series.filter(p => poPlausible(p.v, c)), sm = [];
+  for (let i = 0; i < raw.length; i += 5) {
+    let sum = 0, n = 0;
+    for (let j = Math.max(0, i - 7); j <= Math.min(raw.length - 1, i + 7); j++) if (Math.abs(raw[j].t - raw[i].t) <= 8 * MIN) { sum += raw[j].v; n++; }
+    sm.push({t:raw[i].t, v:sum / n});
+  }
+  const ex = [], W = 36;
+  for (let i = W; i < sm.length - W; i++) {
+    if (sm[i + W].t - sm[i - W].t > 7 * HOUR) continue;
+    let mx = true, mn = true;
+    for (let j = i - W; j <= i + W && (mx || mn); j++) { if (sm[j].v > sm[i].v) mx = false; if (sm[j].v < sm[i].v) mn = false; }
+    if (mx && (!ex.length || ex[ex.length - 1].k !== "H")) ex.push({t:sm[i].t, h:sm[i].v, k:"H"});
+    else if (mn && (!ex.length || ex[ex.length - 1].k !== "N")) ex.push({t:sm[i].t, h:sm[i].v, k:"N"});
+  }
+  return {curve:sm, ex};
+}
+function shapeFromSeries(series, c) { const x = extremesOf(series, c); return deriveShape(x.curve, x.ex); }
 
-function renderRows(){
-  const c=$("rows");c.innerHTML="";
-  state.rows.forEach((r,i)=>{
-    const div=document.createElement("div");div.className="scheitel-row";
-    div.innerHTML=
-      '<select aria-label="Scheiteltyp"><option value="NW"'+(r.type==="NW"?" selected":"")+'>NW</option><option value="HW"'+(r.type==="HW"?" selected":"")+'>HW</option></select>'+
-      '<input type="time" aria-label="Uhrzeit" value="'+esc(r.time)+'">'+
-      '<input inputmode="decimal" aria-label="Höhe über SKN in Metern" placeholder="m ü. SKN" value="'+esc(r.height)+'">'+
-      '<button type="button" class="btn del" aria-label="Zeile entfernen"'+(state.rows.length<=2?' style="opacity:.35"':'')+'>✕</button>';
-    const[sel,tIn,hIn,del]=div.children;
-    sel.onchange=e=>{state.rows[i].type=e.target.value;update();};
-    tIn.onchange=e=>{state.rows[i].time=e.target.value;update();};
-    hIn.oninput=e=>{state.rows[i].height=e.target.value;update(false);};
-    hIn.onchange=()=>update();
-    del.onclick=()=>{if(state.rows.length>2){state.rows.splice(i,1);renderRows();update();}};
-    c.appendChild(div);
+// ---------- Übernahme aus Version 1.x ----------
+function migrateV1(old, oldTides, oldRaw, oldCalib, today) {
+  const notes = [];
+  const gid = OLD_GAUGE[old && old.pegel] || DEFAULT_GAUGE;
+  const mode = old && old.mode ? old.mode : old && old.dry === false ? "skn" : "dry";
+  const name = (old && old.spotName || "Wattenhoch").trim() || "Wattenhoch";
+  const conv = list => (list || []).map(o => ({ts:null, level:String(o.pegel), depth:String(o.depth), disp:"", src:"man", note:o.note || ""})).filter(p => isFinite(peilSill(p)));
+  const spots = [{id:"s1", name, gauge:gid, mode, val:String(old && old.spotVal != null ? old.spotVal : "0.8"), lag:"0", note:"", peil:[]}];
+  const calib = oldCalib && typeof oldCalib === "object" ? oldCalib : {};
+  let n = 1;
+  for (const key of Object.keys(calib)) {
+    const list = conv(calib[key]);
+    if (!list.length) continue;
+    if (key === name.toLowerCase()) spots[0].peil = list;
+    else { const st = peilStats(list); spots.push({id:"s" + (++n), name:key.charAt(0).toUpperCase() + key.slice(1), gauge:gid, mode:"dry", val:st.mean.toFixed(2), lag:"0", note:"", peil:list}); }
+  }
+  const S = {v:2, boat:{draft:String(old && old.draft || "1.25"), margin:String(old && old.margin || "0.5"), echo:""}, spots, cur:"s1", date:today, theme:"auto", tab:"fenster", liveGauge:null, edit:null};
+  const T = {man:{}, raw:{}, ovr:{}};
+  const tides = oldTides && typeof oldTides === "object" ? oldTides : {};
+  for (const pn of Object.keys(tides)) {
+    const id = OLD_GAUGE[pn];
+    if (!id || !tides[pn] || typeof tides[pn] !== "object") continue;
+    T.man[id] = Object.assign(T.man[id] || {}, tides[pn]);
+    if (oldRaw && typeof oldRaw[pn] === "string") T.raw[id] = oldRaw[pn];
+  }
+  // zuletzt bearbeitete Scheitel sichern (nicht die Beispielwerte der alten Version)
+  const rows = old && Array.isArray(old.rows) ? old.rows.filter(r => r && /^\d{1,2}:\d{2}$/.test(r.time || "")) : [];
+  const demo = rows.length === 3 && rows.map(r => r.time + r.height).join("|") === "04:300.6|10:454.3|17:000.6";
+  if (rows.length >= 2 && !demo && validDate(old.date) && !(T.man[gid] && T.man[gid][old.date])) {
+    T.man[gid] = T.man[gid] || {};
+    T.man[gid][old.date] = rows.map(r => ({type:r.type === "HW" ? "HW" : "NW", time:pad(+r.time.split(":")[0]) + ":" + r.time.split(":")[1], height:String(r.height == null ? "" : r.height)}));
+    T.ovr[gid] = T.ovr[gid] || {};
+    T.ovr[gid][old.date] = true;
+  }
+  if (old && old.pegel && GI[gid] && GI[gid].name !== old.pegel) notes.push("Der Pegel „" + old.pegel + "“ heißt jetzt „" + GI[gid].name + "“" + (GI[gid].man ? " und hat beim BSH keine Höhenvorausberechnung – dafür gibt es keine automatischen Daten." : "."));
+  if (old && (num(old.surgeHW) || num(old.surgeNW))) notes.push("Der bisher eingetragene Windstau wurde nicht übernommen. Er gilt jetzt je Tag und wird bei BSH-Vorhersage automatisch gesetzt.");
+  if (mode === "mhw") notes.push("Die Stelle rechnet mit „Tiefe bei MThw“. Das mittlere Hochwasser stammt jetzt vom BSH (bisher Schätzwerte) – bitte das Ergebnis prüfen.");
+  return {S, T, notes};
+}
+/* ================= ENDE KERN ================= */
+
+/* ================= OBERFLÄCHE ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const TABS = ["fenster","live","stellen","gezeiten","mehr"];
+const LS = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { if (!LS.warned) { LS.warned = true; toast("Speichern auf diesem Gerät ist fehlgeschlagen. Bitte eine Sicherung anlegen."); } return false; } },
+};
+let S, T, SG, API, SHP, LIVE = {}, NET = {};
+let lastCalc = null, chartGeo = null, curT = null, liveDiff = null, pendingPaste = null, lastToday = null;
+const nowMs = () => Date.now();
+const today = () => dateOf(Date.now());
+const db = () => ({man:T.man, ovr:T.ovr, api:API});
+const dispNum = s => String(s == null ? "" : s).replace(".", ",");
+const spotById = id => S.spots.find(s => s.id === id) || null;
+const curSpot = () => spotById(S.cur) || S.spots[0];
+const uid = () => "s" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
+
+// ---------- Laden und Speichern ----------
+function cleanSpot(s, i) {
+  return {id:String(s.id || "s" + (i + 1)), name:String(s.name || "Stelle " + (i + 1)), gauge:GI[s.gauge] ? s.gauge : DEFAULT_GAUGE,
+    mode:["dry","skn","mhw"].indexOf(s.mode) >= 0 ? s.mode : "dry", val:String(s.val == null ? "" : s.val), lag:String(s.lag == null ? "0" : s.lag),
+    note:String(s.note || ""), peil:Array.isArray(s.peil) ? s.peil.filter(p => p && typeof p === "object") : []};
+}
+function adopt(raw) {
+  const st = raw && typeof raw === "object" ? raw : {};
+  const boat = st.boat && typeof st.boat === "object" ? st.boat : {};
+  let spots = Array.isArray(st.spots) ? st.spots.filter(x => x && typeof x === "object").map(cleanSpot) : [];
+  if (!spots.length) spots = [cleanSpot({id:"s1", name:"Wattenhoch", gauge:DEFAULT_GAUGE, mode:"dry", val:"0.8"}, 0)];
+  return {v:2, boat:{draft:String(boat.draft == null ? "1.25" : boat.draft), margin:String(boat.margin == null ? "0.5" : boat.margin), echo:String(boat.echo == null ? "" : boat.echo)},
+    spots, cur:spots.some(s => s.id === st.cur) ? st.cur : spots[0].id, theme:["auto","light","dark"].indexOf(st.theme) >= 0 ? st.theme : "auto",
+    liveGauge:GI[st.liveGauge] && GI[st.liveGauge].uuid ? st.liveGauge : null, date:today(), tab:"fenster", edit:null, notes:[]};
+}
+function adoptTides(t) {
+  const o = t && typeof t === "object" ? t : {};
+  return {man:o.man && typeof o.man === "object" ? o.man : {}, raw:o.raw && typeof o.raw === "object" ? o.raw : {}, ovr:o.ovr && typeof o.ovr === "object" ? o.ovr : {}};
+}
+function load() {
+  let notes = [];
+  let st = LS.get("tf2:state"), ti = LS.get("tf2:tides");
+  if (!st || !Array.isArray(st.spots) || !st.spots.length) {
+    const old = LS.get("tidenfenster-state");
+    if (old && typeof old === "object") {
+      const m = migrateV1(old, LS.get("tidenfenster-tides"), LS.get("tidenfenster-tidesraw"), LS.get("tidenfenster-calib"), today());
+      st = m.S; ti = m.T;
+      notes = ["Deine Stelle, Peilungen und eingefügten Tafeln aus der bisherigen Version wurden übernommen."].concat(m.notes);
+    }
+  }
+  const fresh = !st;
+  S = adopt(st);
+  if (fresh) notes = ["Erste Schritte: unter „Mehr“ den Tiefgang eintragen und unter „Stellen“ die eigene flache Stelle anlegen. Die Stelle „Wattenhoch“ ist nur ein Platzhalter mit angenommener Höhe."];
+  S.notes = notes;
+  T = adoptTides(ti);
+  SG = LS.get("tf2:surge") || {};
+  API = LS.get("tf2:api") || {};
+  SHP = LS.get("tf2:shape") || {};
+  if (typeof SG !== "object") SG = {};
+  if (typeof API !== "object") API = {};
+  if (typeof SHP !== "object") SHP = {};
+  for (const k of Object.keys(SHP)) if (!GI[k] || !SHP[k] || !Array.isArray(SHP[k].R) || SHP[k].R.length !== SHN + 1 || !Array.isArray(SHP[k].F) || SHP[k].F.length !== SHN + 1) delete SHP[k];
+  const limit = addDays(today(), -14);
+  for (const k of Object.keys(SG)) if ((k.split("|")[1] || "") < limit) delete SG[k];
+  const used = {};
+  for (const s of S.spots) used[s.gauge] = true;
+  for (const k of Object.keys(API)) if (!GI[k] || !API[k] || !Array.isArray(API[k].e) || (!used[k] && nowMs() - (API[k].at || 0) > 7 * 24 * HOUR)) delete API[k];
+  lastToday = today();
+  saveS(); saveT(); saveSG(); saveAPI();
+}
+const saveS = () => LS.set("tf2:state", {v:2, boat:S.boat, spots:S.spots, cur:S.cur, theme:S.theme, liveGauge:S.liveGauge});
+const saveT = () => LS.set("tf2:tides", T);
+const saveSG = () => LS.set("tf2:surge", SG);
+const saveAPI = () => LS.set("tf2:api", API);
+// Kurvenform eines Pegels: aus der BSH-Kurve, sonst aus seinen Messwerten, sonst keine (dann Kosinus)
+function shapeFor(gid) {
+  const a = API[gid];
+  if (a && a.sh && Array.isArray(a.sh.R) && a.sh.R.length === SHN + 1 && Array.isArray(a.sh.F) && a.sh.F.length === SHN + 1) return Object.assign({src:"bsh"}, a.sh);
+  return SHP[gid] ? Object.assign({src:"po"}, SHP[gid]) : null;
+}
+const calcFor = (spot, date) => calcDay(db(), spot, S.boat, date, surgeCore(spot.gauge, date), shapeFor(spot.gauge));
+function shapeText(gid) {
+  const sh = shapeFor(gid);
+  if (!sh) return "Kosinus-Näherung";
+  return sh.src === "bsh" ? "Kurvenform aus der BSH-Kurve dieses Pegels" : "Kurvenform aus den Messwerten dieses Pegels (" + Math.min(sh.n[0], sh.n[1]) + " Tiden)";
+}
+
+// ---------- Abweichung durch Wind: Einstellung je Pegel und Tag ----------
+function hasFc(gid, date) {
+  const a = API[gid];
+  if (!a || !Array.isArray(a.e)) return false;
+  const lo = dayStart(date) / MIN, hi = dayStart(addDays(date, 1)) / MIN;
+  return a.e.some(e => e[3] != null && e[0] >= lo && e[0] < hi);
+}
+function surgeUi(gid, date) {
+  const c = SG[gid + "|" + date];
+  if (c && typeof c === "object") return {m:c.m || "off", ref:c.ref === "mit" ? "mit" : "zus", hw:String(c.hw == null ? "0" : c.hw), nw:String(c.nw == null ? "0" : c.nw)};
+  return {m:hasFc(gid, date) ? "bsh" : "off", ref:"zus", hw:"0", nw:"0"};
+}
+function surgeCore(gid, date) {
+  const u = surgeUi(gid, date);
+  if (u.m === "man") return {m:u.ref === "mit" && isFinite(gConsts(gid, API).mhwS) ? "mit" : "zus", hw:u.hw, nw:u.nw};
+  return {m:u.m};
+}
+function setSurge(gid, date, patch) { SG[gid + "|" + date] = Object.assign(surgeUi(gid, date), patch); saveSG(); }
+
+// ---------- Netz ----------
+async function getJson(url, ms) {
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms || 12000);
+  try {
+    const r = await fetch(url, {signal:ctl.signal, cache:"no-store"});
+    if (!r.ok) { const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+    return await r.json();
+  } finally { clearTimeout(to); }
+}
+async function loadBsh(gid, force) {
+  const g = GI[gid];
+  if (!g || !g.api) return;
+  const n = NET[gid] || (NET[gid] = {});
+  if (n.busy) return;
+  const a = API[gid];
+  if (!force && a && nowMs() - a.at < 20 * MIN) return;
+  if (!force && n.tried && nowMs() - n.tried < 2 * MIN) return;
+  if (navigator.onLine === false) { n.err = "keine Internetverbindung"; return; }
+  n.busy = true; n.tried = nowMs();
+  if (force) refresh();
+  try {
+    const p = parseBsh(await getJson(bshUrl(g.api)));
+    if (!p) throw new Error("leer");
+    API[gid] = mergeApi(API[gid], p, nowMs());
+    n.err = null;
+    saveAPI();
+    if (gid === curSpot().gauge) loadShape(gid);
+  } catch (e) {
+    n.err = e && e.name === "AbortError" ? "Zeitüberschreitung beim BSH" : e && e.status === 404 ? "das BSH liefert für diesen Pegel keine Daten" : e && e.message === "leer" ? "die Antwort des BSH enthielt keine Gezeiten" : "BSH nicht erreichbar";
+  } finally { n.busy = false; refresh(); }
+}
+async function loadLive(gid, force) {
+  const g = GI[gid];
+  if (!g || !g.uuid) return;
+  const L = LIVE[gid] || (LIVE[gid] = {});
+  if (L.busy) return;
+  if (!force && L.tried && nowMs() - L.tried < 55000) return;
+  if (navigator.onLine === false) { L.err = "keine Internetverbindung"; L.tried = nowMs(); return; }
+  L.busy = true; L.tried = nowMs();
+  if (force) refresh();
+  try {
+    const s = parsePo(await getJson(poUrl(g.uuid, "start=PT6H")));
+    if (!s.length) throw new Error("leer");
+    L.series = s; L.err = null;
+  } catch (e) { L.err = e && e.name === "AbortError" ? "Zeitüberschreitung bei PEGELONLINE" : "PEGELONLINE nicht erreichbar oder ohne Messwert"; }
+  finally { L.busy = false; refresh(); }
+}
+async function loadShape(gid) {
+  const g = GI[gid], a = API[gid];
+  if (!g || !g.uuid || !a || (a.sh && a.sh.R)) return;
+  const n = NET[gid] || (NET[gid] = {});
+  if (n.shBusy || (SHP[gid] && nowMs() - (SHP[gid].at || 0) < 7 * 24 * HOUR)) return;
+  if (n.shTried && nowMs() - n.shTried < 30 * MIN) return;
+  if (navigator.onLine === false) return;
+  n.shBusy = true; n.shTried = nowMs();
+  try {
+    const sh = shapeFromSeries(parsePo(await getJson(poUrl(g.uuid, "start=P8D"), 30000)), gConsts(gid, API));
+    if (sh) { SHP[gid] = Object.assign(sh, {at:nowMs()}); LS.set("tf2:shape", SHP); }
+  } catch (e) { /* bleibt bei der bisherigen Kurvenform */ }
+  finally { n.shBusy = false; refresh(); }
+}
+function liveGaugeId() {
+  if (S.liveGauge && GI[S.liveGauge] && GI[S.liveGauge].uuid) return S.liveGauge;
+  const g = GI[curSpot().gauge];
+  return g && g.uuid ? g.id : null;
+}
+// lädt nach, was die sichtbare Ansicht braucht
+function kick(force) {
+  const spot = curSpot();
+  loadBsh(spot.gauge, force);
+  loadShape(spot.gauge);
+  if (S.tab === "stellen") { const seen = {}; for (const s of S.spots) if (!seen[s.gauge]) { seen[s.gauge] = true; loadBsh(s.gauge); } }
+  if (S.tab === "live") { const g = liveGaugeId(); if (g) { loadLive(g, force); loadBsh(g); } }
+  if (S.tab === "fenster" && S.date === today()) loadLive(spot.gauge);
+}
+
+// ---------- Allgemeines ----------
+function toast(text, btn, fn) {
+  const el = $("toast");
+  if (!el) return;
+  el.innerHTML = '<div class="t"><span>' + esc(text) + '</span>' + (btn ? '<button type="button">' + esc(btn) + '</button>' : '') + '</div>';
+  const b = el.querySelector("button");
+  if (b) b.onclick = () => { el.innerHTML = ""; if (fn) fn(); };
+  else setTimeout(() => { el.innerHTML = ""; }, 6000);
+}
+function gaugeOptions(filter, selected) {
+  let h = "", region = null;
+  for (const g of GAUGES) {
+    if (filter && !filter(g)) continue;
+    if (g.region !== region) { if (region !== null) h += "</optgroup>"; region = g.region; h += '<optgroup label="' + esc(region) + '">'; }
+    h += '<option value="' + g.id + '"' + (g.id === selected ? " selected" : "") + '>' + esc(g.name) + '</option>';
+  }
+  return h + (region !== null ? "</optgroup>" : "");
+}
+function buildDateNavs() {
+  document.querySelectorAll("[data-datenav]").forEach(el => {
+    el.innerHTML = '<button type="button" class="btn" data-act="day" data-d="-1" aria-label="Einen Tag zurück">‹</button>' +
+      '<input type="date" class="dateinp" aria-label="Datum">' +
+      '<button type="button" class="btn" data-act="day" data-d="1" aria-label="Einen Tag weiter">›</button>' +
+      '<button type="button" class="btn today" data-act="today">Heute</button>';
   });
 }
+function syncDate() { document.querySelectorAll(".dateinp").forEach(i => { if (i.value !== S.date) i.value = S.date; }); }
+function setIfIdle(el, val) { if (el && document.activeElement !== el && el.value !== val) el.value = val; }
+function setPressed(container, attr, value) { container.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset[attr] === value ? "true" : "false")); }
+function setDate(d) { if (!validDate(d)) return; S.date = d; curT = null; syncDate(); kick(); render(); }
+function applyTheme() {
+  document.documentElement.dataset.theme = S.theme;
+  const dark = S.theme === "dark" || (S.theme === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute("content", dark ? "#152027" : "#FFFFFF");
+}
+function renderNotice() {
+  const el = $("notice");
+  if (!S.notes || !S.notes.length) { el.innerHTML = ""; return; }
+  el.innerHTML = '<div class="msg info" style="margin-top:12px">' + S.notes.map(n => "<p style=\"margin:0 0 6px\">" + esc(n) + "</p>").join("") +
+    '<button type="button" class="btn sm" data-act="notice-ok">Verstanden</button></div>';
+}
+function showTab(t) {
+  if (TABS.indexOf(t) < 0) t = "fenster";
+  S.tab = t;
+  for (const x of TABS) $("v-" + x).hidden = x !== t;
+  document.querySelectorAll("nav.tabs button").forEach(b => { if (b.dataset.tab === t) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  render();
+  window.scrollTo(0, 0);
+  kick();
+}
+function render() {
+  if (S.tab === "fenster") renderFenster();
+  else if (S.tab === "live") renderLive();
+  else if (S.tab === "stellen") renderStellen();
+  else if (S.tab === "gezeiten") renderGezeiten();
+  else renderMehr();
+}
+// aktualisiert nur die Ausgaben, damit Eingabefelder beim Tippen stehen bleiben
+function refresh() {
+  $("net").hidden = navigator.onLine !== false;
+  if (S.tab === "fenster") updateFenster();
+  else if (S.tab === "live") updateLive();
+  else if (S.tab === "stellen") { if (S.edit && spotById(S.edit)) updateSpotEdit(); else renderSpotList(); }
+  else if (S.tab === "gezeiten") updateGezeiten();
+}
 
-function renderResult(){
-  const c=calc();
-  $("reqinfo").innerHTML=c.error?"":
-    'Benötigte Tidenhöhe: <strong>'+f2(c.reqTide)+' m über SKN</strong>';
-  const out=$("result");
-  if(c.error){out.innerHTML='<div class="error">'+esc(c.error)+'</div>';return;}
-  const dateStr=state.date?state.date.split("-").reverse().join("."):"";
-  const sg=v=>(v>0?"+":"")+f2(v)+" m";
-  const surgeNote=(c.surgeHW||c.surgeNW)?' · Windstau HW '+sg(c.surgeHW)+' / NW '+sg(c.surgeNW):'';
-  let html='<div class="banner"><div class="lbl">Befahrbares Zeitfenster · '+
-    esc(state.spotName||"Flache Stelle")+' · Pegel '+esc(state.pegel)+' · '+dateStr+surgeNote+'</div>';
-  if(c.windows.length===0){
-    html+='<div class="nowindow">Im betrachteten Zeitraum nicht befahrbar</div>';
-  }else{
-    for(const[a,b]of c.windows){
-      html+='<div class="window">'+fmtT(a)+' – '+fmtT(b)+' <small>('+fmtDur(b-a)+')</small></div>';
+// ---------- Ansicht: Fenster ----------
+const isWhole = (w, res) => w.a <= res.ds && w.b >= res.de - MIN;
+function sillText(sill) { return sill >= 0 ? f2(sill) + " m über SKN" : f2(-sill) + " m unter SKN"; }
+function liveFor(spot, res) {
+  const g = GI[spot.gauge], L = LIVE[spot.gauge];
+  if (!g || !g.uuid || !L || !L.series || !res || !res.c) return null;
+  const st = liveState(L.series, res.c, nowMs());
+  if (!st || st.bad || !st.fresh || !res.ev) return {st, off:null};
+  const pred = levelAt(res.ev, st.t + (res.lag || 0) * MIN);
+  return {st, off:isFinite(pred) ? st.lvl - pred : null};
+}
+function renderFenster() {
+  const sel = $("selSpot");
+  sel.innerHTML = S.spots.map(s => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join("");
+  sel.value = S.cur;
+  syncDate();
+  updateFenster();
+}
+function sourceText(res, gid) {
+  const parts = [];
+  if (res.srcs.bsh) parts.push("Gezeitenkalender des BSH");
+  if (res.srcs.man) parts.push("eingefügte Tafel");
+  if (res.srcs.ovr) parts.push("von Hand geänderte Scheitel");
+  let w;
+  if (res.surgeMode === "bsh") w = res.fcUsed ? "mit BSH-Vorhersage" + (API[gid] && API[gid].ft ? " vom " + fmtDM(dateOf(API[gid].ft)) + " " + hhmm(API[gid].ft) : "") : "ohne Windeinfluss (keine BSH-Vorhersage für diesen Tag)";
+  else if (res.surgeMode === "zus") w = "mit eigenem Zuschlag";
+  else if (res.surgeMode === "mit") w = "mit eigener Abweichung vom mittleren Hoch-/Niedrigwasser";
+  else w = "ohne Windeinfluss";
+  return "Grundlage: " + parts.join(" und ") + ", " + w + ". " + shapeText(gid) + ".";
+}
+function bannerHtml(spot, res, t, lv) {
+  const g = GI[spot.gauge];
+  const head = '<div class="lbl">' + esc(spot.name) + " · Pegel " + esc(g ? g.name : "?") + " · " + fmtDate(S.date) + "</div>";
+  if (!res.ev) {
+    let body;
+    if (res.nodata) {
+      const n = NET[spot.gauge] || {};
+      body = '<div class="win no">Keine Gezeiten für diesen Tag</div><div class="sub">';
+      if (g && g.api && n.busy) body += "Die Daten des BSH werden gerade geladen …";
+      else if (g && g.api && !API[spot.gauge]) body += "Die Daten des BSH konnten nicht geladen werden" + (n.err ? " (" + esc(n.err) + ")" : "") + ". Mit Verbindung erneut versuchen oder die Tafel unter „Gezeiten“ einfügen.";
+      else if (g && g.api) body += "Die automatischen Daten des BSH reichen etwa sechs Tage voraus. Für diesen Tag die Monatstafel unter „Gezeiten“ einfügen.";
+      else body += "Für diesen Bezugsort gibt es keine automatischen Daten. Die Scheitel unter „Gezeiten“ eintragen.";
+      body += "</div>";
+    } else body = '<div class="win no">Nicht berechenbar</div><div class="sub">' + esc(res.err) + "</div>";
+    return '<div class="banner none">' + head + body + '<div class="row"><button type="button" class="btn sm" data-act="tab" data-tab="gezeiten">Zu den Gezeiten</button>' +
+      (g && g.api ? '<button type="button" class="btn sm" data-act="bsh-refresh">Erneut laden</button>' : "") + "</div></div>";
+  }
+  let h = "", notes = "";
+  if (!res.wins.length) {
+    h += '<div class="win no">Nicht befahrbar</div>';
+    if (res.top) h += '<div class="sub">Höchster Stand ' + f2(res.top.h) + " m um " + hhmm(res.top.t) + " – es fehlen <strong>" + f2(res.req - res.top.h) + " m</strong>.</div>";
+  } else {
+    for (const w of res.wins) {
+      if (isWhole(w, res)) h += '<div class="win">Ganztägig befahrbar</div>';
+      else h += '<div class="win">' + fmtT(w.a, S.date) + " – " + fmtT(w.b, S.date) + " <small>" + fmtDur(w.b - w.a) + "</small></div>";
+    }
+    if (res.wins.some(w => w.cutA || w.cutB)) notes += '<div class="note">Ein Fenster reicht bis an den Rand der vorhandenen Gezeiten. Sein wirklicher Beginn oder sein Ende kann außerhalb liegen.</div>';
+    if (!res.sh && !res.wins.every(w => isWhole(w, res))) notes += '<div class="note">Für diesen Pegel liegt keine Kurvenform vor, gerechnet wird mit einer Kosinuskurve. Nach Hochwasser fällt das Wasser meist schneller: Das Ende eines Fensters kann 10 bis 20 Minuten zu spät angegeben sein.</div>';
+  }
+  if (t != null) {
+    const off = lv && lv.off != null ? lv.off : 0;
+    const n = nowInfo(res, t, off);
+    if (n) {
+      const tag = lv && lv.off != null ? "nach Live-Pegel von " + hhmm(lv.st.t) + " (" + sg2(lv.off) + " m gegenüber der Rechnung)" : "gerechnet, ohne Live-Pegel";
+      if (n.ok) h += '<div class="nowline">Jetzt befahrbar: ' + f2(n.clr) + " m unter dem Kiel" + (n.until != null ? ", " + (n.cut ? "mindestens " : "") + "bis " + fmtT(n.until, S.date) + " (noch " + fmtDur(n.until - t) + ")" : "") + "<small>" + tag + "</small></div>";
+      else h += '<div class="nowline no">Jetzt ' + (n.depth <= 0 ? "liegt die Stelle trocken" : "zu flach: es fehlen " + f2(res.req - n.lvl) + " m") + (n.next != null ? ". Nächstes Fenster ab " + fmtT(n.next, S.date) + " (in " + fmtDur(n.next - t) + ")" : "") + "<small>" + tag + "</small></div>";
     }
   }
-  html+='</div>';
-  html+='<section class="card"><h2>Tidekurve über der Stelle</h2>'+svgChart(c)+'</section>';
-  html+='<section class="card tablewrap"><h2>Wasserstand über 24 Stunden (halbstündlich)</h2><table><thead><tr>'+
-    '<th>Zeit</th><th>Tidenhöhe ü. SKN</th><th>Wassertiefe a. d. Stelle</th><th>Unter dem Kiel</th><th>Status</th></tr></thead><tbody>';
-  for(const r of c.table){
-    if(r.noData){
-      html+='<tr><td><strong>'+fmtT(r.t)+'</strong></td>'+
-        '<td colspan="4" style="color:var(--muted)">keine Scheiteldaten – Nachbartag eingeben</td></tr>';
+  h += notes;
+  h += '<div class="sub">Nötig sind <strong>' + f2(res.req) + " m</strong> über SKN: Grund " + sillText(res.sill) + ", Tiefgang " + f2(res.draft) + " m, Marge " + f2(res.margin) + " m.";
+  if (res.top && res.wins.length) h += " Höchster Stand " + f2(res.top.h) + " m um " + hhmm(res.top.t) + ", dann " + f2(res.top.h - res.sill - res.draft) + " m unter dem Kiel.";
+  h += "<br>" + esc(sourceText(res, spot.gauge)) + "</div>";
+  return '<div class="banner' + (res.wins.length ? "" : " none") + '">' + head + h + "</div>";
+}
+function surgeInfoHtml(spot, res, u) {
+  const gid = spot.gauge, a = API[gid], c = gConsts(gid, API);
+  let h = "";
+  if (u.m === "off") {
+    h = '<p class="hint">Gerechnet wird mit dem Gezeitenkalender allein.' + (hasFc(gid, S.date) ? " Für diesen Tag liegt eine Vorhersage des BSH vor." : "") + "</p>";
+  } else if (u.m === "bsh") {
+    const list = res.ev ? res.evDay.filter(e => e.how === "fc") : [];
+    if (list.length) {
+      h = '<table style="margin-top:10px"><thead><tr><th>Scheitel</th><th>Kalender</th><th>Vorhersage</th><th>Unterschied</th></tr></thead><tbody>' +
+        list.map(e => "<tr><td>" + (e.k === "H" ? "HW" : "NW") + " " + hhmm(e.t) + "</td><td>" + f2(e.tp) + " m</td><td><strong>" + f2(e.h) + " m</strong></td><td>" + sg2(e.h - e.tp) + " m</td></tr>").join("") + "</tbody></table>";
+      h += '<p class="hint">Vorhersage des BSH' + (a && a.ft ? " vom " + fmtDM(dateOf(a.ft)) + " " + hhmm(a.ft) + " Uhr" : "") + ", Unsicherheit laut BSH etwa ± 0,1 m." +
+        (res.carried ? " Für spätere Scheitel ohne Vorhersage wird der niedrigere Stand vorsichtshalber weitergerechnet." : "") + "</p>";
+    } else {
+      h = '<p class="hint">Für diesen Tag liegt keine Vorhersage des BSH vor – sie reicht etwa 24 Stunden voraus. Gerechnet wird mit dem Gezeitenkalender' + (res.ev && res.carried ? ", ein zuvor vorhergesagter niedrigerer Stand wird weitergerechnet" : "") + ".</p>";
+    }
+    if (a && a.text && S.date >= today() && S.date <= addDays(today(), 1)) h += '<p class="hint">BSH: „' + esc(a.text) + "“</p>";
+  } else {
+    if (u.ref === "mit" && !isFinite(c.mhwS)) h = '<div class="msg warn">Für diesen Pegel ist kein mittleres Hoch-/Niedrigwasser bekannt. Der Wert wird als Zuschlag gerechnet.</div>';
+    else if (u.ref === "mit") h = '<p class="hint">So sagt es das BSH an („2 dm höher als das mittlere Hochwasser“). Gerechnet wird Hochwasser = ' + f2(c.mhwS) + " m + Wert, Niedrigwasser = " + f2(c.mnwS) + " m + Wert.</p>";
+    else h = '<p class="hint">Der Wert wird auf jedes Hoch- und Niedrigwasser des Gezeitenkalenders aufgeschlagen. Plus bei auflandigem Wind, minus bei ablandigem.</p>';
+    if (!isFinite(num(u.hw)) || !isFinite(num(u.nw))) h += '<div class="msg warn">Bitte Zahlen eintragen, zum Beispiel 0,2 oder −0,3. Leere Felder zählen als 0.</div>';
+  }
+  return h;
+}
+function boxWidth(id) { const el = $(id), w = el ? Math.round(el.clientWidth) : 0; return w >= 240 ? Math.min(w, 760) : 340; }
+function chartHtml(res, t, live) {
+  const W = boxWidth("fChart"), narrow = W < 520, H = narrow ? 270 : 330, pl = narrow ? 36 : 46, pr = 8, pt = 34, pb = 26, ds = res.ds, de = res.de, ev = res.ev;
+  const N = 240, pts = [];
+  for (let i = 0; i <= N; i++) { const x = ds + (de - ds) * i / N; pts.push([x, levelAt(ev, x)]); }
+  const vals = pts.map(p => p[1]).filter(isFinite).concat(res.evDay.map(e => e.h));
+  if (!vals.length) { chartGeo = null; return '<p class="hint">Für diesen Tag liegen keine Gezeiten vor.</p>'; }
+  const maxH = Math.max(res.req, res.sill, Math.max.apply(null, vals)) + 0.5;
+  const minH = Math.min(0, res.sill, Math.min.apply(null, vals)) - 0.35;
+  const X = x => pl + (x - ds) / (de - ds) * (W - pl - pr), Y = v => pt + (maxH - v) / (maxH - minH) * (H - pt - pb);
+  const r1 = v => v.toFixed(1);
+  let s = '<svg id="chSvg" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Tidekurve des Tages mit befahrbaren Zeiträumen">';
+  const runs = [];
+  let cur = [];
+  for (const p of pts) { if (isFinite(p[1])) cur.push(p); else if (cur.length) { runs.push(cur); cur = []; } }
+  if (cur.length) runs.push(cur);
+  const paths = runs.filter(r => r.length > 1).map(r => ({d:r.map((p, i) => (i ? "L" : "M") + r1(X(p[0])) + "," + r1(Y(p[1]))).join(""), a:X(r[0][0]), b:X(r[r.length - 1][0])}));
+  for (const p of paths) s += '<path class="c-water" d="' + p.d + "L" + r1(p.b) + "," + r1(Y(minH)) + "L" + r1(p.a) + "," + r1(Y(minH)) + 'Z"/>';
+  s += '<rect class="' + (res.sill > 0 ? "c-watt" : "c-sand") + '" x="' + pl + '" y="' + r1(Y(res.sill)) + '" width="' + (W - pl - pr) + '" height="' + r1(Y(minH) - Y(res.sill)) + '"/>';
+  s += '<line class="c-wattline" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + r1(Y(res.sill)) + '" y2="' + r1(Y(res.sill)) + '"/>';
+  for (let v = Math.ceil(minH); v <= Math.floor(maxH); v++) {
+    s += '<line class="' + (v === 0 ? "c-skn" : "c-grid") + '" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + r1(Y(v)) + '" y2="' + r1(Y(v)) + '"/>';
+    s += '<text class="t-ax" x="' + (pl - 6) + '" y="' + r1(Y(v) + 4) + '" text-anchor="end">' + v + " m</text>";
+  }
+  const y = +S.date.slice(0, 4), mo = +S.date.slice(5, 7), d = +S.date.slice(8, 10);
+  for (let hh = 0; hh <= 24; hh += narrow ? 6 : 3) {
+    const tt = hh === 24 ? de : bToMs(y, mo, d, hh, 0);
+    s += '<text class="t-ax" x="' + r1(X(tt)) + '" y="' + (H - 9) + '" text-anchor="' + (hh === 0 ? "start" : hh === 24 ? "end" : "middle") + '">' + pad(hh % 24) + ":00</text>";
+    if (hh > 0 && hh < 24) s += '<line class="c-grid" x1="' + r1(X(tt)) + '" x2="' + r1(X(tt)) + '" y1="' + (H - pb) + '" y2="' + (H - pb + 4) + '"/>';
+  }
+  for (const w of res.wins) {
+    const a = Math.max(w.a, ds), b = Math.min(w.b, de);
+    s += '<rect class="c-win" x="' + r1(X(a)) + '" y="' + pt + '" width="' + r1(Math.max(0, X(b) - X(a))) + '" height="' + (H - pt - pb) + '"/>';
+  }
+  s += '<line class="c-req" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + r1(Y(res.req)) + '" y2="' + r1(Y(res.req)) + '"/>';
+  s += '<text class="t-mag" x="' + (pl + 4) + '" y="' + r1(Y(res.req) - 5) + '">nötig ' + f2(res.req) + " m</text>";
+  for (const p of paths) s += '<path class="c-curve" d="' + p.d + '"/>';
+  for (const e of res.evDay) {
+    const ex = X(e.t), ey = Y(e.h), anchor = ex < pl + 30 ? "start" : ex > W - pr - 30 ? "end" : "middle";
+    s += '<circle class="c-dot" cx="' + r1(ex) + '" cy="' + r1(ey) + '" r="4"/>';
+    s += '<text class="t-ev" x="' + r1(ex) + '" y="' + r1(ey + (e.k === "H" ? -9 : 17)) + '" text-anchor="' + anchor + '">' + (e.k === "H" ? "HW " : "NW ") + f2(e.h) + "</text>";
+  }
+  for (const w of res.wins) {
+    [[w.a, "end"], [w.b, "start"]].forEach(pair => {
+      const tt = pair[0];
+      if (tt < ds || tt > de) return;
+      const x = X(tt), anchor = pair[1] === "end" ? (x < pl + 38 ? "start" : "end") : (x > W - pr - 38 ? "end" : "start");
+      s += '<line class="c-winl" x1="' + r1(x) + '" x2="' + r1(x) + '" y1="' + pt + '" y2="' + (H - pb) + '"/>';
+      s += '<text class="t-mag" x="' + r1(x + (anchor === "end" ? -3 : 3)) + '" y="' + (pt - 6) + '" text-anchor="' + anchor + '">' + hhmm(tt) + "</text>";
+    });
+  }
+  if (t != null && t >= ds && t <= de) {
+    const x = X(t);
+    s += '<line class="c-now" x1="' + r1(x) + '" x2="' + r1(x) + '" y1="' + (pt - 18) + '" y2="' + (H - pb) + '"/>';
+    s += '<text class="t-now" x="' + r1(x + (x > W - 60 ? -4 : 4)) + '" y="' + (pt - 20) + '" text-anchor="' + (x > W - 60 ? "end" : "start") + '">jetzt</text>';
+  }
+  if (live && live.t >= ds && live.t <= de) s += '<circle class="c-live" cx="' + r1(X(live.t)) + '" cy="' + r1(Y(live.lvl)) + '" r="5"><title>Live-Pegel</title></circle>';
+  s += '<line id="chCur" class="c-cur" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" visibility="hidden"/></svg>';
+  chartGeo = {W, pl, pr, ds, de};
+  return s;
+}
+function drawCursor() {
+  const line = $("chCur"), rd = $("fRead"), g = chartGeo, res = lastCalc;
+  if (!rd) return;
+  if (!line || !g || !res || !res.ev) { rd.textContent = ""; return; }
+  if (curT == null || curT < g.ds || curT > g.de) { line.setAttribute("visibility", "hidden"); rd.textContent = "Kurve antippen, um eine Uhrzeit abzulesen."; return; }
+  const x = g.pl + (curT - g.ds) / (g.de - g.ds) * (g.W - g.pl - g.pr);
+  line.setAttribute("x1", x); line.setAttribute("x2", x); line.setAttribute("visibility", "visible");
+  const l = levelAt(res.ev, curT);
+  if (!isFinite(l)) { rd.innerHTML = "<strong>" + hhmm(curT) + "</strong> · keine Gezeiten vorhanden"; return; }
+  const depth = l - res.sill, clr = depth - res.draft;
+  rd.innerHTML = "<strong>" + hhmm(curT) + "</strong> · Pegel " + f2(l) + " m · " + (depth > 0 ? f2(depth) + " m Wasser · " + (clr >= 0 ? f2(clr) + " m unter dem Kiel" : "es fehlen " + f2(-clr) + " m") : "Stelle liegt trocken");
+}
+function bindChart() {
+  const svg = $("chSvg");
+  if (!svg || !chartGeo) { drawCursor(); return; }
+  const show = cx => {
+    const g = chartGeo, r = svg.getBoundingClientRect();
+    if (!r.width) return;
+    const px = Math.max(g.pl, Math.min(g.W - g.pr, (cx - r.left) / r.width * g.W));
+    curT = Math.round((g.ds + (px - g.pl) / (g.W - g.pl - g.pr) * (g.de - g.ds)) / (5 * MIN)) * 5 * MIN;
+    drawCursor();
+  };
+  svg.addEventListener("pointerdown", e => show(e.clientX));
+  svg.addEventListener("pointermove", e => { if (e.pointerType === "mouse" && e.buttons === 0) return; show(e.clientX); });
+  drawCursor();
+}
+function tableHtml(res, t) {
+  const marks = {};
+  for (const e of res.evDay) { const i = Math.floor((e.t - res.ds) / (30 * MIN)); marks[i] = (marks[i] ? marks[i] + "/" : "") + (e.k === "H" ? "HW" : "NW"); }
+  let h = '<table class="day"><thead><tr><th>Zeit</th><th>Pegel</th><th>Wasser</th><th>Unterm Kiel</th></tr></thead><tbody>';
+  const rows = res.rows;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.nd) {
+      let j = i;
+      while (j + 1 < rows.length && rows[j + 1].nd) j++;
+      h += '<tr><td class="dim">' + hhmm(r.t) + "–" + (j + 1 < rows.length ? hhmm(rows[j + 1].t) : "24:00") + '</td><td class="dim" colspan="3">keine Gezeiten vorhanden</td></tr>';
+      i = j;
       continue;
     }
-    html+='<tr'+(r.ok?' class="ok"':'')+'><td><strong>'+fmtT(r.t)+'</strong></td>'+
-      '<td>'+f2(r.tide)+' m</td>'+
-      '<td>'+(r.depth>0?f2(r.depth)+" m":"trocken")+'</td>'+
-      '<td>'+(r.depth>0?f2(r.clearance)+" m":"—")+'</td>'+
-      '<td class="'+(r.ok?"status-ok":"status-no")+'">'+(r.ok?"befahrbar":"zu flach")+'</td></tr>';
+    const isNow = t != null && t >= r.t && t < r.t + 30 * MIN;
+    h += '<tr class="' + (r.ok ? "ok" : "") + (isNow ? " now" : "") + '"><td><strong>' + hhmm(r.t) + "</strong>" + (marks[i] ? ' <span class="chip">' + marks[i] + "</span>" : "") + "</td>" +
+      "<td>" + f2(r.lvl) + " m</td><td>" + (r.depth > 0 ? f2(r.depth) + " m" : "trocken") + "</td><td>" + (r.depth > 0 ? (r.clr < 0 ? "−" + f2(-r.clr) : f2(r.clr)) + " m" : "–") + "</td></tr>";
   }
-  html+='</tbody></table></section>';
-  out.innerHTML=html;
+  return h + "</tbody></table>" + '<p class="hint">Pegel = Wasserstand über SKN am Bezugspegel. Wasser = Wassertiefe über der Stelle. Hinterlegte Zeilen sind befahrbar' + (t != null ? ", die umrandete Zeile ist jetzt" : "") + ".</p>";
 }
-
-function renderModeSeg(){
-  document.querySelectorAll("#modeseg button").forEach(b=>{
-    b.classList.toggle("on",b.dataset.mode===state.mode);
-  });
-  const lbl=$("spotlbl"),hint=$("mhwhint");
-  if(state.mode==="dry"){lbl.textContent="Watthöhe über SKN (m)";hint.style.display="none";}
-  else if(state.mode==="skn"){lbl.textContent="Kartentiefe unter SKN (m)";hint.style.display="none";}
-  else{
-    lbl.textContent="Wassertiefe bei MThw (m)";
-    const g=PEGEL.find(p=>p.name===state.pegel)||{mhw:3.0};
-    hint.style.display="";
-    hint.textContent="Umrechnung mit MThw "+state.pegel+": "+f2(g.mhw)+" m über SKN. Seegrund = MThw − Tiefe. MThw ist ein Mittelwert – bei genauen Tafelwerten anpassen.";
-  }
-}
-
-// Gespeicherte-Daten-Status für aktuellen Pegel
-function renderStoreStatus(prefix){
-  const el=$("storestatus");
-  const days=tides[state.pegel]?Object.keys(tides[state.pegel]):[];
-  if(days.length===0){el.innerHTML='<div class="status warn">Noch keine Monatsdaten für diesen Pegel gespeichert.</div>';return;}
-  days.sort();
-  el.innerHTML='<div class="status ok">'+(prefix||"")+days.length+' Tag(e) gespeichert: '+
-    dmy(days[0])+' – '+dmy(days[days.length-1])+'</div>';
-}
-
-// Tageschip an der Datumswahl
-function renderDayChip(){
-  const el=$("daychip");
-  const has=tides[state.pegel]&&tides[state.pegel][state.date];
-  if(has){
-    el.innerHTML='<span class="daychip has">✓ BSH-Daten für diesen Tag geladen</span>';
-  }else{
-    const any=tides[state.pegel]&&Object.keys(tides[state.pegel]).length>0;
-    el.innerHTML='<span class="daychip no">'+(any?"Kein Eintrag für diesen Tag – Scheitel unten manuell":"Keine Monatsdaten – Scheitel unten manuell")+'</span>';
+function updateFenster() {
+  const spot = curSpot(), gid = spot.gauge, isToday = S.date === today(), t = isToday ? nowMs() : null;
+  const res = lastCalc = calcFor(spot, S.date);
+  const lv = isToday ? liveFor(spot, res) : null;
+  $("fBanner").innerHTML = bannerHtml(spot, res, t, lv);
+  const dr = num(S.boat.draft);
+  $("fDraft").innerHTML = "Tiefgang <strong>" + (isFinite(dr) ? f2(dr) + " m" : "fehlt") + "</strong>";
+  setIfIdle($("inpMargin"), dispNum(S.boat.margin));
+  const u = surgeUi(gid, S.date);
+  setPressed($("fSurgeSeg"), "m", u.m);
+  $("fSurgeMan").hidden = u.m !== "man";
+  setIfIdle($("inpSurgeHW"), dispNum(u.hw));
+  setIfIdle($("inpSurgeNW"), dispNum(u.nw));
+  setIfIdle($("selSurgeRef"), u.ref);
+  $("fSurgeInfo").innerHTML = surgeInfoHtml(spot, res, u);
+  if (res.ev) {
+    $("fChart").innerHTML = chartHtml(res, t, lv && lv.st && lv.st.fresh && !lv.st.bad ? lv.st : null);
+    bindChart();
+    $("fTable").innerHTML = tableHtml(res, t);
+  } else {
+    chartGeo = null;
+    $("fChart").innerHTML = '<p class="hint" style="margin-top:0">Ohne Gezeiten gibt es keine Kurve.</p>';
+    $("fRead").textContent = "";
+    $("fTable").innerHTML = '<p class="hint" style="margin-top:0">Ohne Gezeiten gibt es keine Tabelle.</p>';
   }
 }
 
-// Tiden des gewählten Tages aus dem Speicher in die Scheitelliste laden
-function loadDayFromStore(){
-  const day=tides[state.pegel]&&tides[state.pegel][state.date];
-  if(day&&day.length>=2){
-    state.rows=day.map(o=>({type:o.type,time:o.time,height:String(o.height)}));
-    renderRows();
+// ---------- Ansicht: Live ----------
+function ageText(ms) { const m = Math.max(0, Math.round(ms / MIN)); return m < 90 ? m + " min" : m < 48 * 60 ? Math.round(m / 60) + " h" : Math.round(m / 1440) + " Tagen"; }
+function trendText(tr) { if (tr == null) return "unbekannt"; if (Math.abs(tr) < 6) return "kaum Änderung"; return (tr > 0 ? "steigt " : "fällt ") + Math.abs(Math.round(tr)) + " cm je Stunde"; }
+function renderLive() {
+  const gid = liveGaugeId(), sel = $("selLive");
+  sel.innerHTML = (gid ? "" : '<option value="">Pegel wählen …</option>') + gaugeOptions(g => !!g.uuid, gid);
+  sel.value = gid || "";
+  $("lPeilMsg").innerHTML = "";
+  updateLive();
+}
+function liveChartHtml(series, base, c, t, res) {
+  const W = boxWidth("lChart"), H = W < 520 ? 200 : 230, pl = W < 520 ? 36 : 46, pr = 8, pt = 12, pb = 26, from = t - 6 * HOUR, to = t + 3 * HOUR;
+  const meas = series.filter(p => p.t >= from && poPlausible(p.v, c)).map(p => [p.t, (p.v - c.skn) / 100]);
+  const pred = [];
+  for (let x = from; x <= to; x += 10 * MIN) { const l = levelAt(base, x); if (isFinite(l)) pred.push([x, l]); }
+  const vals = meas.concat(pred).map(p => p[1]);
+  if (!vals.length) return "";
+  if (res) vals.push(res.req, res.sill);
+  const maxH = Math.max.apply(null, vals) + 0.3, minH = Math.min.apply(null, vals) - 0.3;
+  const X = x => pl + (x - from) / (to - from) * (W - pl - pr), Y = v => pt + (maxH - v) / (maxH - minH) * (H - pt - pb), r1 = v => v.toFixed(1);
+  const path = a => a.map((p, i) => (i ? "L" : "M") + r1(X(p[0])) + "," + r1(Y(p[1]))).join("");
+  let s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Gemessener und vorausberechneter Wasserstand der letzten sechs Stunden">';
+  if (res) {
+    s += '<rect class="' + (res.sill > 0 ? "c-watt" : "c-sand") + '" x="' + pl + '" y="' + r1(Y(res.sill)) + '" width="' + (W - pl - pr) + '" height="' + r1(Math.max(0, Y(minH) - Y(res.sill))) + '"/>';
+    s += '<line class="c-req" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + r1(Y(res.req)) + '" y2="' + r1(Y(res.req)) + '"/>';
   }
-  renderDayChip();
+  for (let v = Math.ceil(minH); v <= Math.floor(maxH); v++) {
+    s += '<line class="c-grid" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + r1(Y(v)) + '" y2="' + r1(Y(v)) + '"/><text class="t-ax" x="' + (pl - 6) + '" y="' + r1(Y(v) + 4) + '" text-anchor="end">' + v + " m</text>";
+  }
+  for (let k = -6; k <= 3; k += 3) {
+    const tt = t + k * HOUR;
+    s += '<text class="t-ax" x="' + r1(X(tt)) + '" y="' + (H - 8) + '" text-anchor="' + (k === -6 ? "start" : k === 3 ? "end" : "middle") + '">' + hhmm(tt) + "</text>";
+  }
+  if (pred.length > 1) s += '<path class="c-pred" d="' + path(pred) + '"/>';
+  if (meas.length > 1) s += '<path class="c-meas" d="' + path(meas) + '"/>';
+  s += '<line class="c-now" x1="' + r1(X(t)) + '" x2="' + r1(X(t)) + '" y1="' + pt + '" y2="' + (H - pb) + '"/>';
+  if (meas.length) { const l = meas[meas.length - 1]; s += '<circle class="c-live" cx="' + r1(X(l[0])) + '" cy="' + r1(Y(l[1])) + '" r="5"/>'; }
+  return s + "</svg>";
 }
-
-// ---------- Live-Pegel (PEGELONLINE) ----------
-function poStation(){
-  const g=PEGEL.find(p=>p.name===state.pegel)||{};
-  return (state.poStation&&state.poStation.trim())||g.po||"";
-}
-function poSknPnp(){
-  const g=PEGEL.find(p=>p.name===state.pegel)||{};
-  const v=num(state.poSknPnp);
-  if(!isNaN(v))return v;
-  return (typeof g.sknPnp==="number")?g.sknPnp:null;
-}
-async function fetchLive(){
-  const el=$("livestatus");
-  const st=poStation(), sp=poSknPnp();
-  if(!st){el.innerHTML='<div class="status err">Kein Stationsname hinterlegt.</div>';return;}
-  el.innerHTML='<div class="status warn">Abruf läuft …</div>';
-  try{
-    const url="https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/"+
-      encodeURIComponent(st)+"/W/currentmeasurement.json";
-    const res=await fetch(url,{cache:"no-store"});
-    if(!res.ok)throw new Error("HTTP "+res.status+(res.status===404?" – Stationsname unbekannt":""));
-    const j=await res.json();
-    if(typeof j.value!=="number")throw new Error("Kein Messwert in der Antwort.");
-    const ts=new Date(j.timestamp);
-    const ageMin=Math.round((Date.now()-ts.getTime())/60000);
-    const pnpM=j.value/100;
-    let html='<div class="status ok"><strong>'+st+'</strong><br>'+
-      'Messwert: '+f2(pnpM)+' m über Pegelnull ('+j.value.toFixed(0)+' cm)<br>'+
-      'Zeitpunkt: '+ts.toLocaleString("de-DE")+(ageMin>=0?' (vor '+ageMin+' min)':'')+'<br>';
-    if(sp===null){
-      html+='<em>SKN-Bezug fehlt – bitte "SKN über Pegelnull" eintragen, sonst keine Umrechnung möglich.</em>';
-    }else{
-      const skn=pnpM-sp/100;
-      state.liveSkn=skn;
-      html+='<strong>Wasserstand: '+f2(skn)+' m über SKN</strong>';
-      const c=calc();
-      if(!c.error){
-        const depth=c.chartDepth+skn;
-        const clear=depth-c.draft;
-        html+='<br>An der Stelle jetzt: '+(depth>0?f2(depth)+' m Wasser':'trocken')+
-          (depth>0?' · unter dem Kiel '+f2(clear)+' m':'');
-      }
-      // Vergleich mit der Vorausberechnung -> realer Windstau
-      const c2=calc();
-      if(!c2.error){
-        const nowMin=new Date().getHours()*60+new Date().getMinutes();
-        if(nowMin>=c2.t0&&nowMin<=c2.t1){
-          const pred=tideAt(nowMin,c2.ext);
-          html+='<br>Vorausberechnung jetzt: '+f2(pred)+' m ü. SKN · Differenz '+
-            ((skn-pred)>=0?"+":"")+f2(skn-pred)+' m';
-        }
-      }
+function updateLive() {
+  const spot = curSpot(), sg = GI[spot.gauge], gid = liveGaugeId(), t = nowMs();
+  let h = "";
+  liveDiff = null;
+  if (!sg.uuid) h += '<div class="msg warn">Für „' + esc(sg.name) + "“, den Bezugspegel von " + esc(spot.name) + ", gibt es keinen Live-Wert" + (sg.man ? "" : ", weil ihn nicht die WSV betreibt") + ". Du kannst einen Nachbarpegel ansehen; auf die Stelle umgerechnet wird er nicht.</div>";
+  const cards = ["lSpotCard", "lChartCard", "lPeilCard"];
+  if (!gid) { $("lMain").innerHTML = h; cards.forEach(c => { $(c).hidden = true; }); return; }
+  const L = LIVE[gid] || {}, c = gConsts(gid, API), st = L.series ? liveState(L.series, c, t) : null;
+  const base = buildEvents(db(), gid, dateOf(t));
+  base.sh = shapeFor(gid);
+  if (!st) {
+    if (L.busy || !L.tried) h += '<p class="hint">Der Messwert wird geladen …</p>';
+    else h += '<div class="msg err">Kein Messwert abrufbar (' + esc(L.err || "unbekannter Fehler") + "). Der Live-Pegel braucht eine Internetverbindung.</div>";
+  } else if (st.bad) {
+    h += '<div class="msg err">Der Pegel meldet gerade einen unplausiblen Wert (' + Math.round(st.v) + " cm über Pegelnull, " + hhmm(st.t) + " Uhr). Er wird nicht verwendet.</div>";
+  } else {
+    h += '<div class="big">' + f2(st.lvl) + " <small>m über SKN</small></div><dl class=\"kv\">";
+    const kv = (a, b) => { h += "<dt>" + a + "</dt><dd>" + b + "</dd>"; };
+    kv("Gemessen", hhmm(st.t) + " Uhr" + (dateOf(st.t) !== dateOf(t) ? " am " + fmtDM(dateOf(st.t)) : "") + ", vor " + ageText(st.age));
+    kv("Tendenz", trendText(st.trend));
+    kv("Über Pegelnull", Math.round(st.v) + " cm");
+    const pred = levelAt(base, st.t);
+    if (isFinite(pred)) { kv("Gezeitenkalender", f2(pred) + " m"); kv("Abweichung", sg2(st.lvl - pred) + " m"); if (st.fresh) liveDiff = st.lvl - pred; }
+    h += "</dl>";
+    if (!st.fresh) h += '<div class="msg warn">Dieser Messwert ist ' + ageText(st.age) + " alt und nicht mehr aktuell. Er wird nicht auf die Stelle umgerechnet.</div>";
+    else if (L.err) h += '<p class="hint">Der letzte Abruf ist fehlgeschlagen (' + esc(L.err) + "). Gezeigt wird der zuletzt geladene Wert.</p>";
+  }
+  $("lMain").innerHTML = h;
+  const usable = st && !st.bad && st.fresh, own = gid === spot.gauge;
+  // Stelle
+  $("lSpotCard").hidden = !(own && usable);
+  let res = null;
+  if (own && usable) {
+    const d = dateOf(t);
+    res = calcFor(spot, d);
+    $("lSpotH").textContent = "Jetzt an der Stelle " + spot.name;
+    let s = "";
+    if (!isFinite(res.sill)) s = '<div class="msg warn">' + esc(res.err || "Die Stelle ist noch nicht vollständig angelegt.") + "</div>";
+    else {
+      const depth = st.lvl - res.sill, clr = depth - res.draft, ok = st.lvl >= res.req;
+      s += '<div class="nowline' + (ok ? "" : " no") + '">' + (depth <= 0 ? "Die Stelle liegt trocken" : ok ? "Befahrbar: " + f2(clr) + " m unter dem Kiel" : "Zu flach: es fehlen " + f2(res.req - st.lvl) + " m") + "</div>";
+      s += '<dl class="kv"><dt>Wasser über der Stelle</dt><dd>' + (depth > 0 ? f2(depth) + " m" : "trocken") + "</dd><dt>Unter dem Kiel</dt><dd>" + (depth > 0 ? (clr < 0 ? "−" + f2(-clr) : f2(clr)) + " m" : "–") +
+        "</dd><dt>Nötiger Wasserstand</dt><dd>" + f2(res.req) + " m</dd></dl>";
+      if (res.ev) {
+        const pr = levelAt(res.ev, st.t + (res.lag || 0) * MIN);
+        const n = isFinite(pr) ? nowInfo(res, t, st.lvl - pr) : null;
+        if (n && n.ok && n.until != null) s += '<p class="hint">Bleibt voraussichtlich ' + (n.cut ? "mindestens " : "") + "bis <strong>" + fmtT(n.until, d) + "</strong> befahrbar (noch " + fmtDur(n.until - t) + "), wenn der Pegel weiter um " + sg2(st.lvl - pr) + " m von der Rechnung abweicht.</p>";
+        else if (n && !n.ok && n.next != null) s += '<p class="hint">Voraussichtlich befahrbar ab <strong>' + fmtT(n.next, d) + "</strong> (in " + fmtDur(n.next - t) + "), wenn der Pegel weiter um " + sg2(st.lvl - pr) + " m von der Rechnung abweicht.</p>";
+      } else s += '<p class="hint">Für heute liegen keine Gezeiten vor, deshalb gibt es keine Aussage zur Dauer.</p>';
+      if (num(spot.lag)) s += '<p class="hint">Der Zeitversatz der Stelle ist beim Momentanwert nicht berücksichtigt.</p>';
+      if (liveDiff != null && Math.abs(liveDiff) >= 0.03) s += '<div class="row"><button type="button" class="btn sm" data-act="live-take">Abweichung ' + sg2(liveDiff) + " m als Zuschlag für heute übernehmen</button></div>";
     }
-    if(ageMin>60)html+='<br><em>Achtung: Messwert älter als eine Stunde.</em>';
-    html+='<br><span style="font-size:11px">Rohdaten © www.pegelonline.wsv.de – ungeprüft</span></div>';
-    el.innerHTML=html;
-  }catch(err){
-    el.innerHTML='<div class="status err">Abruf fehlgeschlagen: '+esc(err.message)+
-      '<br>Mögliche Gründe: keine Internetverbindung, falscher Stationsname, oder der Dienst erlaubt '+
-      'keinen direkten Zugriff aus dem Browser.</div>';
+    $("lSpot").innerHTML = s;
   }
+  // Verlauf
+  const ch = L.series && c.skn != null ? liveChartHtml(L.series, base, c, t, own && res && isFinite(res.sill) ? res : null) : "";
+  $("lChartCard").hidden = !ch;
+  $("lChart").innerHTML = ch;
+  $("lLegReq").hidden = !(own && res && isFinite(res.sill));
+  $("lPeilCard").hidden = !(own && usable);
 }
 
-// ---------- Kalibrierung ----------
-function calibKey(){return (state.spotName||"Stelle").trim().toLowerCase();}
-function calibItems(){return (calib[calibKey()]||[]);}
-function calibHeights(){
-  return calibItems().map(o=>num(o.pegel)-num(o.depth)).filter(v=>!isNaN(v));
+// ---------- Ansicht: Stellen ----------
+function spotDesc(s, c) {
+  const v = num(s.val);
+  if (!isFinite(v)) return "Höhe fehlt noch";
+  if (s.mode === "skn") return "Kartentiefe " + f2(Math.abs(v)) + " m unter SKN";
+  if (s.mode === "mhw") return f2(Math.abs(v)) + " m Wasser bei mittlerem Hochwasser" + (isFinite(c.mhwS) ? " (Grund " + sillText(c.mhwS - Math.abs(v)) + ")" : "");
+  return "fällt trocken, " + f2(Math.abs(v)) + " m über SKN";
 }
-function renderCalib(){
-  const el=$("calibList");if(!el)return;
-  const items=calibItems();
-  if(items.length===0){
-    el.innerHTML='<div class="status warn">Noch keine Peilungen für „'+esc(state.spotName||"Stelle")+'".</div>';
-    return;
+function renderStellen() {
+  if (S.edit && spotById(S.edit)) renderSpotEdit();
+  else { S.edit = null; $("sEdit").hidden = true; $("sEdit").innerHTML = ""; $("sList").hidden = false; renderSpotList(); }
+}
+function renderSpotList() {
+  let h = '<div class="card"><h2>Deine Stellen</h2><p class="hint" style="margin-top:0">Befahrbar am ' + fmtDate(S.date) + ":</p>";
+  for (const s of S.spots) {
+    const r = calcFor(s, S.date), g = GI[s.gauge];
+    let w, bad = false;
+    if (r.ev) {
+      if (!r.wins.length) { w = "nicht befahrbar"; bad = true; }
+      else w = r.wins.map(x => isWhole(x, r) ? "ganztägig" : fmtT(x.a, S.date) + "–" + fmtT(x.b, S.date)).join(" · ");
+    } else { w = r.nodata ? "keine Gezeiten für diesen Tag" : r.err; bad = true; }
+    h += '<div class="spot' + (s.id === S.cur ? " cur" : "") + '"><div class="spot-h"><strong>' + esc(s.name) + "</strong>" + (s.id === S.cur ? '<span class="chip on">gewählt</span>' : "") + "</div>" +
+      '<div class="spot-m">Pegel ' + esc(g.name) + " · " + esc(spotDesc(s, gConsts(s.gauge, API))) + (s.peil.length ? " · " + s.peil.length + (s.peil.length === 1 ? " Peilung" : " Peilungen") : "") + "</div>" +
+      '<div class="spot-w' + (bad ? " no" : "") + '">' + esc(w) + "</div>" +
+      '<div class="row"><button type="button" class="btn sm' + (s.id === S.cur ? "" : " pri") + '" data-act="spot-use" data-id="' + esc(s.id) + '">Anzeigen</button>' +
+      '<button type="button" class="btn sm" data-act="spot-edit" data-id="' + esc(s.id) + '">Bearbeiten</button></div></div>';
   }
-  const hs=calibHeights();
-  const mean=hs.reduce((a,b)=>a+b,0)/hs.length;
-  const min=Math.min(...hs),max=Math.max(...hs);
-  let html='<table style="margin-top:10px"><thead><tr><th>Wasserstand</th><th>Tiefe</th><th>Watthöhe</th><th>Notiz</th><th></th></tr></thead><tbody>';
-  items.forEach((o,i)=>{
-    const h=num(o.pegel)-num(o.depth);
-    html+='<tr><td>'+f2(num(o.pegel))+' m</td><td>'+f2(num(o.depth))+' m</td>'+
-      '<td><strong>'+f2(h)+' m</strong></td><td style="white-space:normal">'+esc(o.note||"")+'</td>'+
-      '<td><button type="button" class="btn calibdel" data-i="'+i+'" style="padding:4px 8px;color:var(--danger)">✕</button></td></tr>';
-  });
-  html+='</tbody></table>';
-  html+='<div class="status '+((max-min)<=0.15?"ok":"warn")+'">'+
-    'Mittelwert: <strong>'+f2(mean)+' m über SKN</strong> · Streuung '+f2(max-min)+' m ('+f2(min)+'–'+f2(max)+' m)<br>'+
-    ((max-min)<=0.15
-      ? 'Geringe Streuung – die Stelle folgt dem Pegel gut.'
-      : 'Größere Streuung – Zeitversatz oder abweichender Tidenhub gegenüber dem Pegel. Im Zweifel den höchsten Wert (flachste Annahme) verwenden.')+
-    '</div>';
-  el.innerHTML=html;
-  el.querySelectorAll(".calibdel").forEach(b=>{
-    b.onclick=()=>{
-      const i=+b.dataset.i;const k=calibKey();
-      calib[k].splice(i,1);if(calib[k].length===0)delete calib[k];
-      saveCalib();renderCalib();
-    };
-  });
+  h += '<div class="row"><button type="button" class="btn pri" data-act="spot-new">Neue Stelle anlegen</button></div></div>';
+  $("sList").innerHTML = h;
+}
+function renderSpotEdit() {
+  const s = spotById(S.edit), d = today(), n = bParts(nowMs());
+  $("sList").hidden = true;
+  const el = $("sEdit");
+  el.hidden = false;
+  el.innerHTML = '<div class="card"><h2>Stelle bearbeiten</h2>' +
+    '<label class="lbl" for="eName">Name</label><input id="eName" data-bind="spot.name" value="' + esc(s.name) + '">' +
+    '<div style="margin-top:10px"><label class="lbl" for="eGauge">Bezugspegel</label><select id="eGauge" data-bind="spot.gauge">' + gaugeOptions(null, s.gauge) + "</select></div>" +
+    '<div style="margin-top:10px"><span class="lbl" id="eModeL">Die Höhe der Stelle ist angegeben als</span><div class="seg" id="eMode" role="group" aria-labelledby="eModeL">' +
+    '<button type="button" data-act="spot-mode" data-m="dry">fällt trocken</button><button type="button" data-act="spot-mode" data-m="skn">Tiefe unter SKN</button><button type="button" data-act="spot-mode" data-m="mhw">Tiefe bei MThw</button></div></div>' +
+    '<div style="margin-top:10px"><label class="lbl" for="eVal" id="eValL"></label><input id="eVal" data-bind="spot.val" inputmode="decimal" value="' + esc(dispNum(s.val)) + '"></div>' +
+    '<div id="eHint"></div>' +
+    '<details style="margin-top:12px;border-top:1px solid var(--line)"><summary>Zeitversatz und Notiz</summary>' +
+    '<label class="lbl" for="eLag" style="margin-top:6px">Zeitversatz gegenüber dem Pegel (Minuten)</label><input id="eLag" data-bind="spot.lag" inputmode="numeric" value="' + esc(dispNum(s.lag)) + '">' +
+    '<p class="hint">Positiv, wenn Hoch- und Niedrigwasser an der Stelle später eintreten als am Pegel. Im Normalfall 0 lassen und lieber den passenden Pegel wählen.</p>' +
+    '<label class="lbl" for="eNote" style="margin-top:10px">Notiz</label><input id="eNote" data-bind="spot.note" value="' + esc(s.note) + '"></details>' +
+    '<div class="row"><button type="button" class="btn pri" data-act="spot-done">Fertig</button><button type="button" class="btn" data-act="spot-dup">Duplizieren</button><button type="button" class="btn bad" data-act="spot-del">Löschen</button></div></div>' +
+    '<div class="card"><h2>Eigene Peilungen</h2><p class="hint" style="margin-top:0">Jede Lotung über der Stelle ergibt eine Höhe des Grundes: Wasserstand am Pegel minus gemessene Wassertiefe. Unterwegs geht das am schnellsten unter „Live“.</p>' +
+    '<div id="ePeil"></div><h3>Peilung nachtragen</h3><div class="grid">' +
+    '<div><label class="lbl" for="ePDate">Datum</label><input type="date" id="ePDate" value="' + d + '"></div>' +
+    '<div><label class="lbl" for="ePTime">Uhrzeit</label><input type="time" id="ePTime" value="' + pad(n.h) + ":" + pad(n.mi) + '"></div>' +
+    '<div><label class="lbl" for="ePDisp">Echolot-Anzeige (m)</label><input id="ePDisp" inputmode="decimal" placeholder="z. B. 0,5"></div>' +
+    '<div><label class="lbl" for="ePLevel">Wasserstand ü. SKN (m)</label><input id="ePLevel" inputmode="decimal" placeholder="leer = Pegel abfragen"></div>' +
+    '<div><label class="lbl" for="ePNote">Notiz</label><input id="ePNote" placeholder="optional"></div></div>' +
+    '<p class="hint" id="ePEcho"></p>' +
+    '<div class="row"><button type="button" class="btn pri" data-act="peil-add">Peilung hinzufügen</button></div><div id="ePeilMsg"></div></div>';
+  updateSpotEdit();
+}
+function updateSpotEdit() {
+  const s = spotById(S.edit);
+  if (!s || !$("eMode")) return;
+  const g = GI[s.gauge], c = gConsts(s.gauge, API), sill = sillOf(s, c), dr = num(S.boat.draft), mg = num(S.boat.margin);
+  setPressed($("eMode"), "m", s.mode);
+  $("eValL").textContent = s.mode === "dry" ? "Höhe über SKN (m)" : s.mode === "skn" ? "Kartentiefe unter SKN (m)" : "Wassertiefe bei mittlerem Hochwasser (m)";
+  let h = "";
+  if (isFinite(sill)) {
+    h += '<p class="hint">Der Grund liegt <strong>' + sillText(sill) + "</strong>" + (s.mode === "mhw" ? ", umgerechnet mit dem mittleren Hochwasser des Pegels (" + f2(c.mhwS) + " m über SKN" + (c.est ? ", geschätzt" : "") + ")" : "") + ".";
+    if (isFinite(dr) && isFinite(mg) && isFinite(c.mhwS)) {
+      const req = sill + dr + mg, d = c.mhwS - req;
+      h += " Mit Tiefgang und Marge brauchst du " + f2(req) + " m Wasserstand; das mittlere Hochwasser hier ist " + f2(c.mhwS) + " m – " + (d >= 0 ? "bleiben im Mittel " + f2(d) + " m Reserve." : "im Mittel fehlen " + f2(-d) + " m.");
+    }
+    h += "</p>";
+  } else if (s.mode === "mhw" && !isFinite(c.mhwS)) h += '<div class="msg warn">Für diesen Pegel ist kein mittleres Hochwasser bekannt.</div>';
+  else h += '<p class="hint">Bitte eine Zahl eintragen, zum Beispiel 1,85.</p>';
+  if (g.man) h += '<div class="msg warn">Für diesen Bezugsort gibt es beim BSH keine Höhenvorausberechnung: keine automatischen Gezeiten, kein Live-Pegel. Die Scheitel trägst du unter „Gezeiten“ selbst ein.</div>';
+  else if (!g.uuid) h += '<p class="hint">Gezeiten und Vorhersage kommen automatisch vom BSH. Einen Live-Pegel gibt es hier nicht.</p>';
+  $("eHint").innerHTML = h;
+  const ea = echoAdd(S.boat);
+  $("ePEcho").innerHTML = "Wassertiefe = Echolot-Anzeige + " + (isFinite(ea) ? f2(ea) : "?") + " m (Echolot-Zuschlag, einstellbar unter „Mehr“). Bleibt der Wasserstand leer, wird der Messwert des Pegels für diese Uhrzeit abgefragt – das geht bis zu 30 Tage zurück und braucht Netz.";
+  // Liste
+  const st = peilStats(s.peil);
+  let p = "";
+  if (!s.peil.length) p = '<p class="hint">Noch keine Peilung für diese Stelle.</p>';
+  else {
+    p = '<div class="tablewrap"><table><thead><tr><th>Wann</th><th>Pegel</th><th>Tiefe</th><th>Grund</th><th></th></tr></thead><tbody>';
+    s.peil.forEach((x, i) => {
+      const hgt = peilSill(x);
+      p += "<tr><td>" + (x.ts ? fmtDM(dateOf(x.ts)) + " " + hhmm(x.ts) : "–") + (x.note ? ' <span class="dim" style="white-space:normal">' + esc(x.note) + "</span>" : "") + "</td><td>" + (isFinite(num(x.level)) ? f2(num(x.level)) + " m" : "–") +
+        "</td><td>" + (isFinite(num(x.depth)) ? f2(num(x.depth)) + " m" : "–") + "</td><td><strong>" + (isFinite(hgt) ? f2(hgt) + " m" : "–") + '</strong></td><td><button type="button" class="btn sm bad" data-act="peil-del" data-i="' + i + '" aria-label="Peilung löschen">✕</button></td></tr>';
+    });
+    p += "</tbody></table></div>";
+    if (st) {
+      const tight = st.spread <= 0.15;
+      p += '<div class="msg ' + (st.n > 1 && !tight ? "warn" : "ok") + '">Mittel <strong>' + f2(st.mean) + " m über SKN</strong>" + (st.n > 1 ? ", Streuung " + f2(st.spread) + " m (" + f2(st.min) + " bis " + f2(st.max) + " m). " +
+        (tight ? "Die Stelle folgt dem Pegel gut." : "Das ist viel: anderer Tidenhub, Zeitversatz oder veränderter Grund. Im Zweifel mit dem flachsten Wert rechnen.") : " aus einer Peilung. Erst mehrere Peilungen zeigen, wie verlässlich der Wert ist.") + "</div>";
+      p += '<div class="row"><button type="button" class="btn sm" data-act="peil-use" data-w="mean">Mittel ' + f2(st.mean) + " m übernehmen</button>" +
+        (st.n > 1 ? '<button type="button" class="btn sm" data-act="peil-use" data-w="max">Flachsten Wert ' + f2(st.max) + " m übernehmen</button>" : "") + "</div>";
+    }
+  }
+  $("ePeil").innerHTML = p;
+}
+async function addPeil() {
+  const s = spotById(S.edit), msg = $("ePeilMsg");
+  if (!s) return;
+  const say = (cls, txt) => { msg.innerHTML = '<div class="msg ' + cls + '">' + txt + "</div>"; };
+  const d = $("ePDate").value, tm = $("ePTime").value, disp = num($("ePDisp").value), lvlIn = $("ePLevel").value.trim(), note = $("ePNote").value.trim();
+  const add = echoAdd(S.boat);
+  if (!isFinite(disp) || disp < 0) return say("err", "Bitte die Echolot-Anzeige als Zahl eintragen.");
+  if (!isFinite(add)) return say("err", "Bitte zuerst unter „Mehr“ den Tiefgang eintragen.");
+  const tmm = /^(\d{1,2}):(\d{2})/.exec(tm);
+  const ts = validDate(d) && tmm ? bToMs(+d.slice(0, 4), +d.slice(5, 7), +d.slice(8, 10), +tmm[1], +tmm[2]) : null;
+  let level = num(lvlIn), src = "man";
+  if (!isFinite(level)) {
+    if (lvlIn !== "") return say("err", "Der Wasserstand ist keine Zahl.");
+    const g = GI[s.gauge], c = gConsts(s.gauge, API);
+    if (!g.uuid || c.skn == null) return say("err", "Für diesen Pegel gibt es keine Messwerte zum Abfragen. Bitte den Wasserstand über SKN selbst eintragen.");
+    if (ts == null) return say("err", "Bitte Datum und Uhrzeit der Peilung eintragen.");
+    if (ts > nowMs() + 2 * MIN) return say("err", "Der Zeitpunkt liegt in der Zukunft.");
+    if (nowMs() - ts > 30 * 24 * HOUR) return say("err", "Messwerte gibt es nur 30 Tage zurück. Bitte den Wasserstand über SKN selbst eintragen.");
+    if (navigator.onLine === false) return say("err", "Ohne Internetverbindung kann der Pegel nicht abgefragt werden. Bitte den Wasserstand selbst eintragen oder später nachtragen.");
+    say("info", "Der Pegel wird abgefragt …");
+    try {
+      const ser = parsePo(await getJson(poUrl(g.uuid, "start=" + encodeURIComponent(isoUtc(ts - 6 * MIN)) + "&end=" + encodeURIComponent(isoUtc(ts + 6 * MIN)))));
+      const hit = nearest(ser, ts, 5 * MIN);
+      if (!hit) return say("err", "Für diese Uhrzeit hat der Pegel keinen Messwert. Bitte den Wasserstand selbst eintragen.");
+      if (!poPlausible(hit.v, c)) return say("err", "Der Pegel hat zu dieser Zeit einen unplausiblen Wert gemeldet (" + Math.round(hit.v) + " cm). Bitte den Wasserstand selbst eintragen.");
+      level = (hit.v - c.skn) / 100; src = "po";
+    } catch (e) { return say("err", "Der Pegel konnte nicht abgefragt werden. Bitte später erneut versuchen oder den Wasserstand selbst eintragen."); }
+  }
+  const depth = disp + add;
+  s.peil.push({ts, level:level.toFixed(2), depth:depth.toFixed(2), disp:String(disp), src, note});
+  s.peil.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  saveS();
+  $("ePDisp").value = ""; $("ePLevel").value = ""; $("ePNote").value = "";
+  updateSpotEdit();
+  say("ok", "Gespeichert: Wasserstand " + f2(level) + " m" + (src === "po" ? " (Messwert des Pegels)" : "") + " − Wassertiefe " + f2(depth) + " m = Grund <strong>" + f2(level - depth) + " m über SKN</strong>.");
 }
 
-function update(persist=true){renderResult();if(persist)save();}
+// ---------- Ansicht: Gezeiten ----------
+function dayRows(gid, date) {
+  if (T.ovr[gid] && T.ovr[gid][date] && Array.isArray(T.man[gid] && T.man[gid][date])) return T.man[gid][date].map(r => ({type:r.type === "HW" ? "HW" : "NW", time:r.time || "", height:String(r.height == null ? "" : r.height), src:"ovr", fc:null}));
+  const ds = dayStart(date), de = dayStart(addDays(date, 1));
+  return buildEvents(db(), gid, date).filter(e => e.t >= ds && e.t < de).map(e => ({type:e.k === "H" ? "HW" : "NW", time:hhmm(e.t), height:isFinite(e.h) ? e.h.toFixed(2) : "", src:e.src, fc:e.fc}));
+}
+function renderGezeiten() {
+  syncDate();
+  const gid = curSpot().gauge;
+  $("gPaste").value = T.raw[gid] || "";
+  $("gPasteMsg").innerHTML = "";
+  pendingPaste = null;
+  updateGezeiten(true);
+}
+function updateGezeiten(full) {
+  const spot = curSpot(), gid = spot.gauge, g = GI[gid], c = gConsts(gid, API), a = API[gid], n = NET[gid] || {};
+  $("gHead").innerHTML = '<div class="lbl">Bezugspegel der Stelle ' + esc(spot.name) + "</div><div style=\"font-family:var(--cond);font-size:22px;font-weight:700;line-height:1.2\">" + esc(g.name) + "</div>" +
+    '<div class="sub" style="margin-top:4px">' + (isFinite(c.mhwS) ? "Mittleres Hochwasser " + f2(c.mhwS) + " m, mittleres Niedrigwasser " + f2(c.mnwS) + " m über SKN" + (c.est ? " (geschätzt)" : "") : "Kennwerte unbekannt") +
+    (c.skn != null ? ". SKN liegt " + c.skn + " cm über Pegelnull." : ".") + "</div>";
+  // BSH-Status
+  let b;
+  if (!g.api) b = '<p class="hint" style="margin-top:0">Für diesen Bezugsort berechnet das BSH keine Höhen voraus. Die Scheitel trägst du oben selbst ein.</p>';
+  else {
+    if (a) {
+      const last = a.e[a.e.length - 1][0] * MIN;
+      b = '<p class="hint" style="margin-top:0">Zuletzt geladen ' + (dateOf(a.at) === today() ? "heute" : "am " + fmtDM(dateOf(a.at))) + " um " + hhmm(a.at) + " Uhr. Die Scheitel reichen bis <strong>" + fmtDate(dateOf(last)) + ", " + hhmm(last) + " Uhr</strong>." +
+        (a.ft ? " Vorhersage des BSH vom " + fmtDM(dateOf(a.ft)) + " " + hhmm(a.ft) + " Uhr." : "") + "</p>";
+    } else b = '<p class="hint" style="margin-top:0">Noch nichts geladen.</p>';
+    if (n.busy) b += '<p class="hint">Die Daten werden geladen …</p>';
+    else if (n.err) b += '<div class="msg warn">Letzter Abruf fehlgeschlagen: ' + esc(n.err) + "." + (a ? " Gerechnet wird mit den zuletzt geladenen Daten." : "") + "</div>";
+    b += '<div class="row"><button type="button" class="btn sm" data-act="bsh-refresh"' + (n.busy ? " disabled" : "") + ">Jetzt laden</button></div>";
+  }
+  const sh = shapeFor(gid);
+  b += '<p class="hint"><strong>Verlauf zwischen den Scheiteln:</strong> ' + (sh ? shapeText(gid) + "." + (sh.src === "po" ? " Sie wird wöchentlich aus den letzten acht Tagen neu bestimmt." : "") :
+    (n.shBusy ? "Die Kurvenform wird gerade aus den Messwerten des Pegels bestimmt …" : "Kosinus-Näherung. " + (g.uuid ? "Die Kurvenform wird aus den Messwerten des Pegels bestimmt, sobald eine Verbindung besteht." : "Für diesen Pegel gibt es weder eine BSH-Kurve noch Messwerte, aus denen sich die Kurvenform bestimmen ließe."))) + "</p>";
+  $("gBsh").innerHTML = b;
+  // Scheitel des Tages – nicht neu aufbauen, während darin getippt wird
+  const box = $("gRows");
+  if (!full && box.contains(document.activeElement)) return;
+  const rows = dayRows(gid, S.date), ovr = !!(T.ovr[gid] && T.ovr[gid][S.date]);
+  const srcName = {bsh:"BSH", man:"eingefügte Tafel", ovr:"von Hand geändert"};
+  let h = '<p class="hint" style="margin-top:0">' + fmtDate(S.date) + " · Höhen in Metern über SKN, ohne Windeinfluss.</p>";
+  if (!rows.length) h += '<div class="msg warn">Für diesen Tag liegen keine Scheitel vor.</div>';
+  rows.forEach((r, i) => {
+    h += '<div class="evrow" data-i="' + i + '"><select aria-label="Art des Scheitels" data-ev="type"><option value="HW"' + (r.type === "HW" ? " selected" : "") + '>HW</option><option value="NW"' + (r.type === "NW" ? " selected" : "") + ">NW</option></select>" +
+      '<input type="time" aria-label="Uhrzeit" data-ev="time" value="' + esc(r.time) + '"><input inputmode="decimal" aria-label="Höhe über SKN in Metern" data-ev="height" placeholder="m ü. SKN" value="' + esc(dispNum(r.height)) + '">' +
+      '<button type="button" class="btn bad" data-act="ev-del" data-i="' + i + '" aria-label="Scheitel entfernen">✕</button>' +
+      '<div class="evsrc">' + srcName[r.src] + (r.fc != null ? " · Vorhersage " + f2(r.fc) + " m" : "") + "</div></div>";
+  });
+  h += '<div class="row"><button type="button" class="btn sm" data-act="ev-add">Scheitel hinzufügen</button>' +
+    (rows.some(r => r.height === "") && isFinite(c.mhwS) ? '<button type="button" class="btn sm" data-act="ev-mean">Fehlende Höhen mit Mittelwerten füllen</button>' : "") +
+    (ovr ? '<button type="button" class="btn sm" data-act="ev-reset">Änderungen verwerfen</button>' : "") + "</div>";
+  if (ovr) h += '<p class="hint">Dieser Tag wurde von Hand geändert und hat Vorrang vor den automatischen Daten.</p>';
+  const days = T.man[gid] ? Object.keys(T.man[gid]).filter(k => !(T.ovr[gid] && T.ovr[gid][k])).sort() : [];
+  if (days.length) h += '<p class="hint">Eingefügte Tafel: ' + days.length + (days.length === 1 ? " Tag" : " Tage") + ", " + fmtDM(days[0]) + days[0].slice(0, 4) + " bis " + fmtDM(days[days.length - 1]) + days[days.length - 1].slice(0, 4) + ".</p>";
+  box.innerHTML = h;
+}
+function readRows() {
+  const out = [];
+  $("gRows").querySelectorAll(".evrow").forEach(row => {
+    const hv = row.querySelector('[data-ev="height"]').value.trim(), hn = num(hv);
+    out.push({type:row.querySelector('[data-ev="type"]').value === "HW" ? "HW" : "NW", time:row.querySelector('[data-ev="time"]').value.slice(0, 5), height:isFinite(hn) ? String(hn) : ""});
+  });
+  return out;
+}
+function writeRows(rows) {
+  const gid = curSpot().gauge;
+  T.man[gid] = T.man[gid] || {};
+  T.ovr[gid] = T.ovr[gid] || {};
+  if (!rows.length) { delete T.man[gid][S.date]; delete T.ovr[gid][S.date]; }
+  else {
+    rows.sort((a, b) => (a.time === "" ? 1 : b.time === "" ? -1 : a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+    T.man[gid][S.date] = rows; T.ovr[gid][S.date] = true;
+  }
+  saveT();
+  updateGezeiten(true);
+}
+function storePaste(st, conv) {
+  const gid = curSpot().gauge, c = gConsts(gid, API), keys = Object.keys(st).sort();
+  T.man[gid] = T.man[gid] || {};
+  let missing = 0;
+  for (const k of keys) {
+    T.man[gid][k] = st[k].map(r => {
+      let hgt = r.height;
+      if (hgt === "") missing++;
+      else if (conv) hgt = (parseFloat(hgt) - c.skn / 100).toFixed(2);
+      return {type:r.type, time:r.time, height:hgt};
+    });
+    if (T.ovr[gid]) delete T.ovr[gid][k];
+  }
+  T.raw[gid] = $("gPaste").value;
+  saveT();
+  pendingPaste = null;
+  updateGezeiten(true);
+  $("gPasteMsg").innerHTML = '<div class="msg ok">' + keys.length + (keys.length === 1 ? " Tag" : " Tage") + " gespeichert: " + fmtDM(keys[0]) + keys[0].slice(0, 4) + " bis " + fmtDM(keys[keys.length - 1]) + keys[keys.length - 1].slice(0, 4) + (conv ? ", umgerechnet auf Seekartennull" : "") + ".</div>" +
+    (missing ? '<div class="msg warn">Bei ' + missing + " Scheiteln fehlt die Höhe. Ohne Höhe kann nicht gerechnet werden – für diesen Bezugsort liefert das BSH möglicherweise nur Zeiten.</div>" : "");
+}
 
-// ---------- Init ----------
-(function init(){
-  const sel=$("pegel");
-  PEGEL.forEach(p=>{const o=document.createElement("option");o.value=p.name;o.textContent=p.name;sel.appendChild(o);});
-  sel.value=state.pegel;
-  $("datum").value=state.date;
-  $("spotname").value=state.spotName;
-  $("spotval").value=state.spotVal;
-  $("draft").value=state.draft;
-  $("margin").value=state.margin;
-  $("surgeHW").value=state.surgeHW;
-  $("surgeNW").value=state.surgeNW;
-  $("tidata").value=tidesRaw[state.pegel]||"";
-  renderModeSeg();renderRows();renderStoreStatus();
-  loadDayFromStore();update();
-
-  sel.onchange=e=>{
-    state.pegel=e.target.value;
-    $("tidata").value=tidesRaw[state.pegel]||"";
-    state.poStation="";state.poSknPnp="";
-    renderStoreStatus();renderModeSeg();loadDayFromStore();update();
-    const g=PEGEL.find(p=>p.name===state.pegel)||{};
-    $("postation").placeholder=g.po||"Stationsname";
-    $("posknpnp").placeholder=(typeof g.sknPnp==="number")?String(g.sknPnp):"unbekannt – eintragen";
-    $("postation").value="";$("posknpnp").value="";
-    $("livestatus").innerHTML="";
+// ---------- Ansicht: Mehr ----------
+function renderMehr() {
+  setIfIdle($("inpDraft"), dispNum(S.boat.draft));
+  setIfIdle($("inpMargin2"), dispNum(S.boat.margin));
+  setIfIdle($("inpEcho"), dispNum(S.boat.echo));
+  $("inpEcho").placeholder = "wie Tiefgang";
+  setPressed($("mTheme"), "t", S.theme);
+  const ea = echoAdd(S.boat);
+  $("mEchoHint").innerHTML = "Echolot-Zuschlag: Wassertiefe = Anzeige + Zuschlag. Zeigt das Echolot das Wasser unter dem Kiel, entspricht er dem eingestellten Versatz des Geräts – meist dem Tiefgang (dann leer lassen). Derzeit wird mit <strong>" + (isFinite(ea) ? f2(ea) + " m" : "?") + "</strong> gerechnet.";
+  $("mVersion").innerHTML = "Tidenfenster <strong>" + VERSION + "</strong>";
+}
+function exportData() {
+  const data = {app:"Tidenfenster", v:2, at:new Date().toISOString(), state:{boat:S.boat, spots:S.spots, cur:S.cur, theme:S.theme}, tides:T, surge:SG};
+  const name = "tidenfenster-sicherung-" + today() + ".json", blob = new Blob([JSON.stringify(data, null, 1)], {type:"application/json"});
+  let file = null;
+  try { file = new File([blob], name, {type:"application/json"}); } catch (e) {}
+  if (file && navigator.canShare && navigator.canShare({files:[file]})) { navigator.share({files:[file], title:name}).catch(() => {}); return; }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  $("mBackupMsg").innerHTML = '<div class="msg ok">Sicherung „' + esc(name) + "“ wurde erstellt.</div>";
+}
+function importData(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    const msg = $("mBackupMsg");
+    let d = null;
+    try { d = JSON.parse(String(rd.result)); } catch (e) {}
+    if (!d || d.app !== "Tidenfenster" || !d.state || !Array.isArray(d.state.spots) || !d.state.spots.length) { msg.innerHTML = '<div class="msg err">Das ist keine Sicherung dieser App.</div>'; return; }
+    if (!confirm("Sicherung vom " + String(d.at || "").slice(0, 10) + " einspielen? Die jetzigen Stellen, Peilungen und Tafeln auf diesem Gerät werden ersetzt.")) return;
+    const keep = {date:S.date};
+    S = adopt(d.state); S.tab = "mehr"; S.date = keep.date;
+    T = adoptTides(d.tides);
+    SG = d.surge && typeof d.surge === "object" ? d.surge : {};
+    saveS(); saveT(); saveSG();
+    applyTheme(); renderMehr(); kick();
+    msg.innerHTML = '<div class="msg ok">Sicherung eingespielt: ' + S.spots.length + (S.spots.length === 1 ? " Stelle." : " Stellen.") + "</div>";
   };
-  $("datum").onchange=e=>{state.date=e.target.value;loadDayFromStore();update();};
-  $("spotname").oninput=e=>{state.spotName=e.target.value;update();};
-  $("spotval").oninput=e=>{state.spotVal=e.target.value;update();};
-  $("draft").oninput=e=>{state.draft=e.target.value;update();};
-  $("margin").oninput=e=>{state.margin=e.target.value;update();};
-  $("surgeHW").oninput=e=>{state.surgeHW=e.target.value;update();};
-  $("surgeNW").oninput=e=>{state.surgeNW=e.target.value;update();};
-  const flipSign=key=>{
-    let v=num(state[key]);if(isNaN(v))v=0;v=-v;if(Object.is(v,-0))v=0;
-    state[key]=String(v);$(key).value=String(v).replace(".",",");update();
-  };
-  $("signHW").onclick=()=>flipSign("surgeHW");
-  $("signNW").onclick=()=>flipSign("surgeNW");
+  rd.readAsText(file);
+}
 
-  // Live-Pegel
-  const syncPoFields=()=>{
-    const g=PEGEL.find(p=>p.name===state.pegel)||{};
-    $("postation").placeholder=g.po||"Stationsname";
-    $("posknpnp").placeholder=(typeof g.sknPnp==="number")?String(g.sknPnp):"unbekannt – eintragen";
-    $("postation").value=state.poStation||"";
-    $("posknpnp").value=state.poSknPnp||"";
-  };
-  syncPoFields();
-  $("postation").oninput=e=>{state.poStation=e.target.value;save();};
-  $("posknpnp").oninput=e=>{state.poSknPnp=e.target.value;save();};
-  $("livefetch").onclick=fetchLive;
-
-  // Kalibrierung
-  renderCalib();
-  $("calibAdd").onclick=()=>{
-    const p=$("calibPegel").value,d=$("calibDepth").value,n=$("calibNote").value;
-    if(isNaN(num(p))||isNaN(num(d))){
-      $("calibList").innerHTML='<div class="status err">Bitte Wasserstand und gemessene Wassertiefe eintragen.</div>';
+// ---------- Bedienung ----------
+const ACT = {
+  tab(b) { showTab(b.dataset.tab); },
+  day(b) { setDate(addDays(S.date, +b.dataset.d)); },
+  today() { setDate(today()); },
+  "notice-ok"() { S.notes = []; renderNotice(); },
+  margin(b) { let v = num(S.boat.margin); if (!isFinite(v)) v = 0; v = Math.max(0, Math.round((v + +b.dataset.d) * 10) / 10); S.boat.margin = String(v); saveS(); $("inpMargin").value = dispNum(S.boat.margin); refresh(); },
+  "surge-m"(b) { setSurge(curSpot().gauge, S.date, {m:b.dataset.m}); refresh(); },
+  sign(b) { const k = b.dataset.f, gid = curSpot().gauge, u = surgeUi(gid, S.date); let v = num(u[k]); if (!isFinite(v)) v = 0; v = -v; if (Object.is(v, -0)) v = 0; const o = {m:"man"}; o[k] = String(v); setSurge(gid, S.date, o); $(k === "hw" ? "inpSurgeHW" : "inpSurgeNW").value = dispNum(String(v)); refresh(); },
+  "bsh-refresh"() { loadBsh(curSpot().gauge, true); },
+  "live-refresh"() { const g = liveGaugeId(); if (g) { loadLive(g, true); loadBsh(g); } },
+  "live-take"() { if (liveDiff == null) return; const v = (Math.round(liveDiff * 100) / 100).toString(), d = today(); setSurge(curSpot().gauge, d, {m:"man", ref:"zus", hw:v, nw:v}); S.date = d; showTab("fenster"); toast("Für heute wird mit " + sg2(liveDiff) + " m Zuschlag gerechnet."); },
+  "peil-live"() {
+    const spot = curSpot(), L = LIVE[spot.gauge], c = gConsts(spot.gauge, API), st = L && L.series ? liveState(L.series, c, nowMs()) : null, msg = $("lPeilMsg");
+    const disp = num($("inpLiveDisp").value), add = echoAdd(S.boat);
+    if (!st || st.bad || !st.fresh) { msg.innerHTML = '<div class="msg err">Es liegt kein aktueller Messwert vor.</div>'; return; }
+    if (!isFinite(disp) || disp < 0) { msg.innerHTML = '<div class="msg err">Bitte die Echolot-Anzeige als Zahl eintragen.</div>'; return; }
+    if (!isFinite(add)) { msg.innerHTML = '<div class="msg err">Bitte zuerst unter „Mehr“ den Tiefgang eintragen.</div>'; return; }
+    const depth = disp + add;
+    spot.peil.push({ts:st.t, level:st.lvl.toFixed(2), depth:depth.toFixed(2), disp:String(disp), src:"live", note:$("inpLiveNote").value.trim()});
+    spot.peil.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    saveS();
+    $("inpLiveDisp").value = ""; $("inpLiveNote").value = "";
+    const stt = peilStats(spot.peil);
+    msg.innerHTML = '<div class="msg ok">Gespeichert: Wasserstand ' + f2(st.lvl) + " m − Wassertiefe " + f2(depth) + " m (Anzeige " + f2(disp) + " + " + f2(add) + ") = Grund <strong>" + f2(st.lvl - depth) + " m über SKN</strong>." +
+      (stt && stt.n > 1 ? " Mittel aus " + stt.n + " Peilungen: " + f2(stt.mean) + " m." : "") + " Übernehmen kannst du den Wert unter „Stellen“.</div>";
+  },
+  "spot-use"(b) { S.cur = b.dataset.id; S.liveGauge = null; saveS(); showTab("fenster"); },
+  "spot-edit"(b) { S.edit = b.dataset.id; renderStellen(); window.scrollTo(0, 0); },
+  "spot-new"() { const s = cleanSpot({id:uid(), name:"Neue Stelle", gauge:curSpot().gauge, mode:"dry", val:""}, S.spots.length); S.spots.push(s); S.edit = s.id; saveS(); renderStellen(); window.scrollTo(0, 0); const n = $("eName"); if (n) { n.focus(); n.select(); } },
+  "spot-done"() { S.edit = null; saveS(); renderStellen(); window.scrollTo(0, 0); },
+  "spot-dup"() { const s = spotById(S.edit); if (!s) return; const c = cleanSpot(JSON.parse(JSON.stringify(s)), 0); c.id = uid(); c.name = s.name + " (Kopie)"; S.spots.push(c); S.edit = c.id; saveS(); renderStellen(); window.scrollTo(0, 0); },
+  "spot-del"() {
+    const s = spotById(S.edit);
+    if (!s) return;
+    if (S.spots.length < 2) { toast("Die letzte Stelle lässt sich nicht löschen – ändere sie stattdessen."); return; }
+    if (!confirm("Stelle „" + s.name + "“ mit " + s.peil.length + " Peilungen löschen?")) return;
+    S.spots = S.spots.filter(x => x.id !== s.id);
+    if (S.cur === s.id) S.cur = S.spots[0].id;
+    S.edit = null; saveS(); renderStellen();
+  },
+  "spot-mode"(b) { const s = spotById(S.edit); if (!s) return; s.mode = b.dataset.m; saveS(); updateSpotEdit(); },
+  "peil-add"() { addPeil(); },
+  "peil-del"(b) { const s = spotById(S.edit); if (!s) return; s.peil.splice(+b.dataset.i, 1); saveS(); updateSpotEdit(); },
+  "peil-use"(b) { const s = spotById(S.edit), st = s && peilStats(s.peil); if (!st) return; s.mode = "dry"; s.val = (b.dataset.w === "max" ? st.max : st.mean).toFixed(2); saveS(); $("eVal").value = dispNum(s.val); updateSpotEdit(); toast("Die Stelle rechnet jetzt mit " + f2(num(s.val)) + " m über SKN."); },
+  "ev-add"() { const rows = readRows(), last = rows[rows.length - 1]; rows.push({type:last && last.type === "HW" ? "NW" : "HW", time:"", height:""}); writeRows(rows); },
+  "ev-del"(b) { const rows = readRows(); rows.splice(+b.dataset.i, 1); writeRows(rows); },
+  "ev-reset"() { writeRows([]); },
+  "ev-mean"() { const c = gConsts(curSpot().gauge, API); writeRows(readRows().map(r => (r.height === "" ? Object.assign(r, {height:(r.type === "HW" ? c.mhwS : c.mnwS).toFixed(2)}) : r))); },
+  "paste-save"() {
+    const gid = curSpot().gauge, c = gConsts(gid, API), st = parseMonth($("gPaste").value, +S.date.slice(0, 4)), msg = $("gPasteMsg");
+    if (!Object.keys(st).length) { msg.innerHTML = '<div class="msg err">Keine Tage erkannt. Jeder Tag braucht ein Datum (zum Beispiel 11.11.2026) und dazu die Uhrzeiten mit HW oder NW.</div>'; return; }
+    if (c.skn != null && looksLikePnp(st, c)) {
+      pendingPaste = st;
+      msg.innerHTML = '<div class="msg warn">Die Höhen liegen weit über dem mittleren Hochwasser dieses Pegels (' + f2(c.mhwS) + " m über SKN). Vermutlich war auf der BSH-Seite „Pegelnullpunkt“ statt „Seekartennull“ eingestellt." +
+        '<div class="row"><button type="button" class="btn sm pri" data-act="paste-conv">Auf Seekartennull umrechnen (−' + f2(c.skn / 100) + ' m)</button><button type="button" class="btn sm" data-act="paste-force">Unverändert speichern</button></div></div>';
       return;
     }
-    const k=calibKey();
-    if(!calib[k])calib[k]=[];
-    calib[k].push({pegel:String(num(p)),depth:String(num(d)),note:n||""});
-    saveCalib();
-    $("calibPegel").value="";$("calibDepth").value="";$("calibNote").value="";
-    renderCalib();
-  };
-  $("calibApply").onclick=()=>{
-    const hs=calibHeights();
-    if(hs.length===0){renderCalib();return;}
-    const mean=hs.reduce((a,b)=>a+b,0)/hs.length;
-    state.mode="dry";state.spotVal=mean.toFixed(2);
-    $("spotval").value=state.spotVal.replace(".",",");
-    renderModeSeg();update();
-  };
-  $("spotname").addEventListener("input",renderCalib);
-  document.querySelectorAll("#modeseg button").forEach(b=>{
-    b.onclick=()=>{state.mode=b.dataset.mode;renderModeSeg();update();};
+    storePaste(st, false);
+  },
+  "paste-conv"() { if (pendingPaste) storePaste(pendingPaste, true); },
+  "paste-force"() { if (pendingPaste) storePaste(pendingPaste, false); },
+  "paste-clear"() {
+    const gid = curSpot().gauge;
+    if (!confirm("Alle eingefügten Tafeln für " + GI[gid].name + " löschen? Von Hand geänderte Tage bleiben erhalten.")) return;
+    for (const k of Object.keys(T.man[gid] || {})) if (!(T.ovr[gid] && T.ovr[gid][k])) delete T.man[gid][k];
+    delete T.raw[gid];
+    saveT(); renderGezeiten();
+    $("gPasteMsg").innerHTML = '<div class="msg ok">Eingefügte Tafeln gelöscht.</div>';
+  },
+  theme(b) { S.theme = b.dataset.t; saveS(); applyTheme(); renderMehr(); },
+  export() { exportData(); },
+  import() { $("fileImport").click(); },
+  reload() { location.reload(); },
+};
+function onBind(el) {
+  const b = el.dataset.bind, v = el.value, spot = curSpot(), ed = spotById(S.edit);
+  if (b === "cur") { S.cur = v; S.liveGauge = null; curT = null; saveS(); kick(); render(); return; }
+  if (b === "liveGauge") { S.liveGauge = v || null; saveS(); kick(); renderLive(); return; }
+  if (b === "surge.hw") { setSurge(spot.gauge, S.date, {m:"man", hw:v}); refresh(); return; }
+  if (b === "surge.nw") { setSurge(spot.gauge, S.date, {m:"man", nw:v}); refresh(); return; }
+  if (b === "surge.ref") { setSurge(spot.gauge, S.date, {m:"man", ref:v}); refresh(); return; }
+  if (b === "boat.draft") S.boat.draft = v;
+  else if (b === "boat.margin") S.boat.margin = v;
+  else if (b === "boat.echo") S.boat.echo = v;
+  else if (ed && b === "spot.name") ed.name = v;
+  else if (ed && b === "spot.val") ed.val = v;
+  else if (ed && b === "spot.lag") ed.lag = v;
+  else if (ed && b === "spot.note") ed.note = v;
+  else if (ed && b === "spot.gauge") { if (GI[v]) ed.gauge = v; saveS(); loadBsh(v); updateSpotEdit(); return; }
+  saveS();
+  if (S.tab === "mehr") renderMehr(); else refresh();
+}
+function wire() {
+  document.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest("[data-act]");
+    if (!b || b.disabled) return;
+    const fn = ACT[b.dataset.act];
+    if (fn) fn(b);
   });
-  $("addrow").onclick=()=>{
-    const last=state.rows[state.rows.length-1];
-    state.rows.push({type:last&&last.type==="HW"?"NW":"HW",time:"",height:""});
-    renderRows();update();
-  };
-  $("fillmeans").onclick=()=>{
-    const g=PEGEL.find(p=>p.name===state.pegel);
-    state.rows=state.rows.map(r=>({...r,height:String(r.type==="HW"?g.mhw:g.mnw)}));
-    renderRows();update();
-  };
-
-  $("savetides").onclick=()=>{
-    const raw=$("tidata").value;
-    const yr=parseInt((state.date||todayISO()).slice(0,4),10);
-    const parsed=parseMonth(raw,yr);
-    const keys=Object.keys(parsed);
-    if(keys.length===0){
-      $("storestatus").innerHTML='<div class="status err">Keine Tage erkannt. Bitte je Tag ein Datum (z.B. 11.07.) und darunter die HW/NW-Zeiten einfügen.</div>';
-      return;
-    }
-    tides[state.pegel]=parsed;
-    tidesRaw[state.pegel]=raw;
-    saveTides();
-    loadDayFromStore();update();
-    renderStoreStatus("Gespeichert · ");
-  };
-  $("cleartides").onclick=()=>{
-    if(!confirm("Alle gespeicherten Monatsdaten für "+state.pegel+" löschen?"))return;
-    delete tides[state.pegel];delete tidesRaw[state.pegel];
-    saveTides();$("tidata").value="";
-    renderStoreStatus();renderDayChip();update();
-  };
-
-  if("serviceWorker"in navigator){
-    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  document.addEventListener("input", e => { const el = e.target; if (el.dataset && el.dataset.bind && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) onBind(el); });
+  document.addEventListener("change", e => {
+    const el = e.target;
+    if (el.classList && el.classList.contains("dateinp")) { if (validDate(el.value)) setDate(el.value); else el.value = S.date; return; }
+    if (el.dataset && el.dataset.bind && el.tagName === "SELECT") { onBind(el); return; }
+    if (el.dataset && el.dataset.ev) { writeRows(readRows()); return; }
+    if (el.id === "fileImport" && el.files && el.files[0]) { importData(el.files[0]); el.value = ""; }
+  });
+  window.addEventListener("online", () => { kick(); refresh(); });
+  window.addEventListener("offline", () => refresh());
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
+  if (window.matchMedia) { const mq = matchMedia("(prefers-color-scheme: dark)"); if (mq.addEventListener) mq.addEventListener("change", applyTheme); }
+  let rz = null;
+  // nur neu zeichnen, wenn sich die Breite wirklich geändert hat (beim Scrollen auf dem Handy ändert sich nur die Höhe)
+  let lastW = window.innerWidth;
+  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; if (S.tab === "fenster" || S.tab === "live") refresh(); }, 200); });
+  setInterval(() => { if (!document.hidden) tick(); }, 30000);
+}
+// regelmäßig: Tageswechsel, Nachladen, „jetzt“ fortschreiben
+function tick() {
+  const td = today();
+  if (td !== lastToday) { if (S.date === lastToday) { S.date = td; curT = null; syncDate(); } lastToday = td; }
+  kick();
+  if (S.tab === "fenster" || S.tab === "live") refresh();
+}
+function init() {
+  load();
+  applyTheme();
+  buildDateNavs();
+  wire();
+  renderNotice();
+  showTab("fenster");
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    const had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (had) toast("Eine neue Version wurde geladen.", "Neu starten", () => location.reload()); });
   }
+}
+init();
+
 })();
 </script>
 </body>
